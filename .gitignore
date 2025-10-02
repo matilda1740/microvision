@@ -1,0 +1,18 @@
+# Virtual environment
+venv/
+.env
+
+# Data directories
+data/processed/
+data/chroma_db/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
