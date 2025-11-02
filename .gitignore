@@ -3,7 +3,7 @@ venv/
 .env
 
 # Data directories
-data/processed/
+data/persistence/
 data/chroma_db/
 
 # Python cache
@@ -16,3 +16,7 @@ __pycache__/
 
 # Logs
 *.log
+
+# embeddings and enriched data
+*_embeddings.csv
+*_enriched.csv
