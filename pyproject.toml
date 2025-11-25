@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microvision"
+version = "0.0.0"
+description = "Microvision parsing/ingest/visualization pipeline"
+requires-python = ">=3.8"

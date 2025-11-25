@@ -3,9 +3,8 @@ venv/
 .env
 
 # Data directories
-data/persistence/
-data/chroma_db/
-
+data/*
+notebooks/data/*
 # Python cache
 __pycache__/
 *.pyc

@@ -1,0 +1,951 @@
+source_service,source_component,target_service,target_component,similarity,source_template,target_template
+nan,nan,"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",1.0,"semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+nan,nan,"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",1.0,"semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+nan,nan,"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",0.7608,"semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object"
+nan,nan,"['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']",0.7608,"semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object"
+nan,nan,"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",1.0,"semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object"
+nan,nan,"['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']",1.0,"semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object"
+nan,nan,"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",0.7608,"semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+nan,nan,"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",0.7608,"semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    req_id - - - - - while synchronizing instance ...
+semantic_text                                                 None
+Name: 8, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - while synchronizing instance ...
+Name: 82, dtype: object"
+nan,nan,nova.compute,nova.compute.manager,0.6866,"semantic_text    req_id - - - - - while synchronizing instance ...
+semantic_text                                                 None
+Name: 8, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.6866,"semantic_text    req_id - - - - - while synchronizing instance ...
+semantic_text                                                 None
+Name: 8, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object"
+nan,nan,nova.scheduler,nova.scheduler.host_manager,1.0,"semantic_text    req_id - - - - - the instance sync for host cp...
+semantic_text                                                 None
+Name: 10, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object"
+nan,nan,['nova.scheduler'],['nova.scheduler.host_manager'],1.0,"semantic_text    req_id - - - - - the instance sync for host cp...
+semantic_text                                                 None
+Name: 10, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.7458,"semantic_text    req_id - - - - - the instance sync for host cp...
+semantic_text                                                 None
+Name: 10, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],1.0,"semantic_text    req_id - - - - - base or swap file too young t...
+semantic_text                                                 None
+Name: 11, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - base or swap file too young t...
+Name: 76, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],0.8518,"semantic_text    req_id - - - - - base or swap file too young t...
+semantic_text                                                 None
+Name: 11, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+Name: 75, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    req_id - - - - - running instance usage audit ...
+semantic_text                                                 None
+Name: 13, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object"
+nan,nan,nova.scheduler,nova.scheduler.host_manager,0.7458,"semantic_text    req_id - - - - - running instance usage audit ...
+semantic_text                                                 None
+Name: 13, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object"
+nan,nan,['nova.scheduler'],['nova.scheduler.host_manager'],0.7458,"semantic_text    req_id - - - - - running instance usage audit ...
+semantic_text                                                 None
+Name: 13, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    - instance_id vm stopped lifecycle event
+semantic_text                                        None
+Name: 15, dtype: object","semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 72, dtype: object"
+nan,nan,nova.compute,nova.compute.manager,1.0,"semantic_text    - instance_id vm stopped lifecycle event
+semantic_text                                        None
+Name: 15, dtype: object","semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 92, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],1.0,"semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+semantic_text                                                 None
+Name: 16, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],0.8403,"semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+semantic_text                                                 None
+Name: 16, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+Name: 75, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.claims'],1.0,"semantic_text    req_id - - - instance_id attempting claim: mem...
+semantic_text                                                 None
+Name: 17, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id attempting claim: mem...
+Name: 87, dtype: object"
+nan,nan,['nova.api'],['nova.api.openstack.wsgi'],1.0,"semantic_text    req_id - - - http exception thrown: no instanc...
+semantic_text                                                 None
+Name: 18, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object"
+nan,nan,nova.api,nova.api.openstack.compute.server_external_events,0.7041,"semantic_text    req_id - - - http exception thrown: no instanc...
+semantic_text                                                 None
+Name: 18, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object"
+nan,nan,['nova.api'],['nova.api.openstack.compute.server_external_events'],0.7041,"semantic_text    req_id - - - http exception thrown: no instanc...
+semantic_text                                                 None
+Name: 18, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    req_id - - - instance_id took seconds to deall...
+semantic_text                                                 None
+Name: 19, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to deall...
+Name: 89, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.791,"semantic_text    req_id - - - instance_id took seconds to deall...
+semantic_text                                                 None
+Name: 19, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to build...
+Name: 88, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],1.0,"semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+semantic_text                                                 None
+Name: 20, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+Name: 75, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],0.8518,"semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+semantic_text                                                 None
+Name: 20, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - base or swap file too young t...
+Name: 76, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],0.8403,"semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+semantic_text                                                 None
+Name: 20, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object"
+nan,nan,['nova.metadata'],['nova.metadata.wsgi.server'],1.0,"semantic_text    - ipip get http/1.1 status: len: time:
+semantic_text                                      None
+Name: 21, dtype: object","semantic_text                                       NaN
+semantic_text    - ipip get http/1.1 status: len: time:
+Name: 73, dtype: object"
+nan,nan,"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",0.6664,"semantic_text    - ipip get http/1.1 status: len: time:
+semantic_text                                      None
+Name: 21, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.resource_tracker'],1.0,"semantic_text    req_id - - - - - final resource view: name=cp-...
+semantic_text                                                 None
+Name: 22, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - final resource view: name=cp-...
+Name: 77, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    req_id - - - instance_id took seconds to build...
+semantic_text                                                 None
+Name: 24, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to build...
+Name: 88, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.791,"semantic_text    req_id - - - instance_id took seconds to build...
+semantic_text                                                 None
+Name: 24, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to deall...
+Name: 89, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.768,"semantic_text    req_id - - - instance_id took seconds to build...
+semantic_text                                                 None
+Name: 24, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to the i...
+Name: 90, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    req_id - - - instance_id took seconds to the i...
+semantic_text                                                 None
+Name: 25, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to the i...
+Name: 90, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.768,"semantic_text    req_id - - - instance_id took seconds to the i...
+semantic_text                                                 None
+Name: 25, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to build...
+Name: 88, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.7154,"semantic_text    req_id - - - instance_id took seconds to the i...
+semantic_text                                                 None
+Name: 25, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to deall...
+Name: 89, dtype: object"
+nan,nan,"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",0.8894,"semantic_text    2017-05-17 info req_id - - - http/1.1 status: ...
+semantic_text                                                 None
+Name: 26, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.driver'],1.0,"semantic_text    - instance_id instance successfully.
+semantic_text                                    None
+Name: 27, dtype: object","semantic_text                                     NaN
+semantic_text    - instance_id instance successfully.
+Name: 71, dtype: object"
+nan,nan,"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",0.7049,"semantic_text    - instance_id instance successfully.
+semantic_text                                    None
+Name: 27, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+nan,nan,"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",0.7049,"semantic_text    - instance_id instance successfully.
+semantic_text                                    None
+Name: 27, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+nan,nan,"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",1.0,"semantic_text    req_id - - - http/1.1 status: len: time:
+semantic_text                                        None
+Name: 29, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object"
+nan,nan,"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",0.7182,"semantic_text    req_id - - - http/1.1 status: len: time:
+semantic_text                                        None
+Name: 29, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object"
+nan,nan,nova.compute,nova.compute.manager,1.0,"semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.9596,"semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object"
+nan,nan,nova.compute,nova.compute.manager,0.9596,"semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object"
+nan,nan,['nova.api'],['nova.api.openstack.compute.server_external_events'],1.0,"semantic_text    req_id - - - creating event for instance
+semantic_text                                        None
+Name: 31, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object"
+nan,nan,nova.api,nova.api.openstack.compute.server_external_events,1.0,"semantic_text    req_id - - - creating event for instance
+semantic_text                                        None
+Name: 31, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object"
+nan,nan,['nova.api'],['nova.api.openstack.wsgi'],0.7041,"semantic_text    req_id - - - creating event for instance
+semantic_text                                        None
+Name: 31, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object"
+nan,nan,"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",0.8883,"semantic_text    2017-05-16 info req_id - - - http/1.1 status: ...
+semantic_text                                                 None
+Name: 33, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],0.773,"semantic_text    2931 nova.virt.libvirt.imagecache req_id - - -...
+semantic_text                                                 None
+Name: 41, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object"
+nan,nan,['nova.metadata'],['nova.metadata.wsgi.server'],0.7219,"semantic_text    info nova.metadata.wsgi.server - ipip get http...
+semantic_text                                                 None
+Name: 43, dtype: object","semantic_text                                       NaN
+semantic_text    - ipip get http/1.1 status: len: time:
+Name: 73, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.resource_tracker'],0.7804,"semantic_text    2931 info nova.compute.resource_tracker req_id...
+semantic_text                                                 None
+Name: 44, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - final resource view: name=cp-...
+Name: 77, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],0.8555,"semantic_text    2931 info nova.virt.libvirt.imagecache req_id ...
+semantic_text                                                 None
+Name: 49, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object"
+nan,nan,"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",0.7139,"semantic_text    2931 info req_id - - - - -
+semantic_text                          None
+Name: 50, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object"
+nan,nan,['nova.scheduler'],['nova.scheduler.host_manager'],0.726,"semantic_text    25998 info nova.scheduler.host_manager req_id ...
+semantic_text                                                 None
+Name: 51, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object"
+nan,nan,nova.scheduler,nova.scheduler.host_manager,0.726,"semantic_text    25998 info nova.scheduler.host_manager req_id ...
+semantic_text                                                 None
+Name: 51, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object"
+nan,nan,['nova.virt'],['nova.virt.libvirt.imagecache'],0.8299,"semantic_text    2931 info nova.virt.libvirt.imagecache req_id ...
+semantic_text                                                 None
+Name: 53, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - base or swap file too young t...
+Name: 76, dtype: object"
+nan,nan,['nova.scheduler'],['nova.scheduler.host_manager'],0.8165,"semantic_text    25998 info nova.scheduler.host_manager req_id ...
+semantic_text                                                 None
+Name: 62, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object"
+nan,nan,nova.scheduler,nova.scheduler.host_manager,0.8165,"semantic_text    25998 info nova.scheduler.host_manager req_id ...
+semantic_text                                                 None
+Name: 62, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object"
+nan,nan,"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",0.7823,"semantic_text    2931 info req_id - - - instance:
+semantic_text                                None
+Name: 65, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+nan,nan,"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",0.7823,"semantic_text    2931 info req_id - - - instance:
+semantic_text                                None
+Name: 65, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+nan,nan,"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",0.894,"semantic_text    2017-05-14 info req_id - - - http/1.1 status: ...
+semantic_text                                                 None
+Name: 66, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object"
+nan,nan,nova.compute,nova.compute.manager,1.0,"semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object"
+nan,nan,nova.compute,nova.compute.manager,0.9596,"semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object"
+nan,nan,['nova.compute'],['nova.compute.manager'],0.9596,"semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object"
+['nova.compute'],['nova.compute.manager'],nova.compute,nova.compute.manager,1.0,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object","semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.9596,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object","semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object"
+['nova.compute'],['nova.compute.manager'],nova.compute,nova.compute.manager,0.9596,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object"
+['nova.virt'],['nova.virt.libvirt.driver'],nan,nan,1.0,"semantic_text                                     NaN
+semantic_text    - instance_id instance successfully.
+Name: 71, dtype: object","semantic_text    - instance_id instance successfully.
+semantic_text                                    None
+Name: 27, dtype: object"
+['nova.virt'],['nova.virt.libvirt.driver'],"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",0.7049,"semantic_text                                     NaN
+semantic_text    - instance_id instance successfully.
+Name: 71, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+['nova.virt'],['nova.virt.libvirt.driver'],nan,nan,0.7049,"semantic_text                                     NaN
+semantic_text    - instance_id instance successfully.
+Name: 71, dtype: object","semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object"
+['nova.virt'],['nova.virt.libvirt.driver'],"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",0.7049,"semantic_text                                     NaN
+semantic_text    - instance_id instance successfully.
+Name: 71, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+['nova.virt'],['nova.virt.libvirt.driver'],nan,nan,0.6581,"semantic_text                                     NaN
+semantic_text    - instance_id instance successfully.
+Name: 71, dtype: object","semantic_text    2931 info req_id - - - instance:
+semantic_text                                None
+Name: 65, dtype: object"
+['nova.compute'],['nova.compute.manager'],nova.compute,nova.compute.manager,1.0,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 72, dtype: object","semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 92, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 72, dtype: object","semantic_text    - instance_id vm stopped lifecycle event
+semantic_text                                        None
+Name: 15, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.7145,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 72, dtype: object","semantic_text    2931 info nova.compute.manager - instance: vm ...
+semantic_text                                                 None
+Name: 36, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.6588,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 72, dtype: object","semantic_text    nova-compute.log.1.2017-05-16_13:55:31 2017-05...
+semantic_text                                                 None
+Name: 23, dtype: object"
+['nova.metadata'],['nova.metadata.wsgi.server'],nan,nan,1.0,"semantic_text                                       NaN
+semantic_text    - ipip get http/1.1 status: len: time:
+Name: 73, dtype: object","semantic_text    - ipip get http/1.1 status: len: time:
+semantic_text                                      None
+Name: 21, dtype: object"
+['nova.metadata'],['nova.metadata.wsgi.server'],nan,nan,0.7219,"semantic_text                                       NaN
+semantic_text    - ipip get http/1.1 status: len: time:
+Name: 73, dtype: object","semantic_text    info nova.metadata.wsgi.server - ipip get http...
+semantic_text                                                 None
+Name: 43, dtype: object"
+['nova.metadata'],['nova.metadata.wsgi.server'],nan,nan,0.6664,"semantic_text                                       NaN
+semantic_text    - ipip get http/1.1 status: len: time:
+Name: 73, dtype: object","semantic_text    req_id - - - http/1.1 status: len: time:
+semantic_text                                        None
+Name: 29, dtype: object"
+['nova.metadata'],['nova.metadata.wsgi.server'],"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",0.6664,"semantic_text                                       NaN
+semantic_text    - ipip get http/1.1 status: len: time:
+Name: 73, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object"
+"['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']","nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",1.0,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object"
+"['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']",nan,nan,1.0,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object","semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object"
+"['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']",nan,nan,0.7608,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object","semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object"
+"['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']","['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",0.7608,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+"['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']","nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",0.7608,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+Name: 75, dtype: object","semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+semantic_text                                                 None
+Name: 20, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8518,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+Name: 75, dtype: object","semantic_text    req_id - - - - - base or swap file too young t...
+semantic_text                                                 None
+Name: 11, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8403,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+Name: 75, dtype: object","semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+semantic_text                                                 None
+Name: 16, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - base or swap file too young t...
+Name: 76, dtype: object","semantic_text    req_id - - - - - base or swap file too young t...
+semantic_text                                                 None
+Name: 11, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8518,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - base or swap file too young t...
+Name: 76, dtype: object","semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+semantic_text                                                 None
+Name: 20, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8299,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - base or swap file too young t...
+Name: 76, dtype: object","semantic_text    2931 info nova.virt.libvirt.imagecache req_id ...
+semantic_text                                                 None
+Name: 53, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8292,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - base or swap file too young t...
+Name: 76, dtype: object","semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+semantic_text                                                 None
+Name: 16, dtype: object"
+['nova.compute'],['nova.compute.resource_tracker'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - final resource view: name=cp-...
+Name: 77, dtype: object","semantic_text    req_id - - - - - final resource view: name=cp-...
+semantic_text                                                 None
+Name: 22, dtype: object"
+['nova.compute'],['nova.compute.resource_tracker'],nan,nan,0.7804,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - final resource view: name=cp-...
+Name: 77, dtype: object","semantic_text    2931 info nova.compute.resource_tracker req_id...
+semantic_text                                                 None
+Name: 44, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object","semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+semantic_text                                                 None
+Name: 16, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8555,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object","semantic_text    2931 info nova.virt.libvirt.imagecache req_id ...
+semantic_text                                                 None
+Name: 49, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8403,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object","semantic_text    req_id - - - - - base /var/lib/nova/instances/...
+semantic_text                                                 None
+Name: 20, dtype: object"
+['nova.virt'],['nova.virt.libvirt.imagecache'],nan,nan,0.8292,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - image at /var/lib/nova/instan...
+Name: 78, dtype: object","semantic_text    req_id - - - - - base or swap file too young t...
+semantic_text                                                 None
+Name: 11, dtype: object"
+['nova.compute'],['nova.compute.manager'],nova.compute,nova.compute.manager,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object","semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object"
+['nova.compute'],['nova.compute.manager'],nova.compute,nova.compute.manager,0.9596,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.9596,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object","semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object","semantic_text    req_id - - - - - running instance usage audit ...
+semantic_text                                                 None
+Name: 13, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.8191,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object","semantic_text    2931 info nova.compute.manager req_id - - - - ...
+semantic_text                                                 None
+Name: 52, dtype: object"
+['nova.compute'],['nova.compute.manager'],['nova.scheduler'],['nova.scheduler.host_manager'],0.7458,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object"
+['nova.compute'],['nova.compute.manager'],nova.scheduler,nova.scheduler.host_manager,0.7458,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.7458,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object","semantic_text    req_id - - - - - the instance sync for host cp...
+semantic_text                                                 None
+Name: 10, dtype: object"
+['nova.scheduler'],['nova.scheduler.host_manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object","semantic_text    req_id - - - - - the instance sync for host cp...
+semantic_text                                                 None
+Name: 10, dtype: object"
+['nova.scheduler'],['nova.scheduler.host_manager'],nova.scheduler,nova.scheduler.host_manager,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object"
+['nova.scheduler'],['nova.scheduler.host_manager'],nan,nan,0.8165,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object","semantic_text    25998 info nova.scheduler.host_manager req_id ...
+semantic_text                                                 None
+Name: 62, dtype: object"
+['nova.scheduler'],['nova.scheduler.host_manager'],['nova.compute'],['nova.compute.manager'],0.7458,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object"
+['nova.scheduler'],['nova.scheduler.host_manager'],nan,nan,0.7458,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object","semantic_text    req_id - - - - - running instance usage audit ...
+semantic_text                                                 None
+Name: 13, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - while synchronizing instance ...
+Name: 82, dtype: object","semantic_text    req_id - - - - - while synchronizing instance ...
+semantic_text                                                 None
+Name: 8, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.8097,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - while synchronizing instance ...
+Name: 82, dtype: object","semantic_text    2931 warning nova.compute.manager req_id - - -...
+semantic_text                                                 None
+Name: 68, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.6866,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - while synchronizing instance ...
+Name: 82, dtype: object","semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object"
+['nova.compute'],['nova.compute.manager'],nova.compute,nova.compute.manager,0.6866,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - while synchronizing instance ...
+Name: 82, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object"
+['nova.api'],['nova.api.openstack.compute.server_external_events'],nan,nan,1.0,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object","semantic_text    req_id - - - creating event for instance
+semantic_text                                        None
+Name: 31, dtype: object"
+['nova.api'],['nova.api.openstack.compute.server_external_events'],nova.api,nova.api.openstack.compute.server_external_events,1.0,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object"
+['nova.api'],['nova.api.openstack.compute.server_external_events'],['nova.api'],['nova.api.openstack.wsgi'],0.7041,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object"
+['nova.api'],['nova.api.openstack.compute.server_external_events'],nan,nan,0.7041,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object","semantic_text    req_id - - - http exception thrown: no instanc...
+semantic_text                                                 None
+Name: 18, dtype: object"
+['nova.api'],['nova.api.openstack.compute.server_external_events'],"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",0.6506,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object"
+['nova.api'],['nova.api.openstack.wsgi'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object","semantic_text    req_id - - - http exception thrown: no instanc...
+semantic_text                                                 None
+Name: 18, dtype: object"
+['nova.api'],['nova.api.openstack.wsgi'],nova.api,nova.api.openstack.compute.server_external_events,0.7041,"semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object"
+['nova.api'],['nova.api.openstack.wsgi'],['nova.api'],['nova.api.openstack.compute.server_external_events'],0.7041,"semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object"
+['nova.api'],['nova.api.openstack.wsgi'],nan,nan,0.7041,"semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object","semantic_text    req_id - - - creating event for instance
+semantic_text                                        None
+Name: 31, dtype: object"
+"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",nan,nan,1.0,"semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object","semantic_text    req_id - - - http/1.1 status: len: time:
+semantic_text                                        None
+Name: 29, dtype: object"
+"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",nan,nan,0.894,"semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object","semantic_text    2017-05-14 info req_id - - - http/1.1 status: ...
+semantic_text                                                 None
+Name: 66, dtype: object"
+"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",nan,nan,0.8894,"semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object","semantic_text    2017-05-17 info req_id - - - http/1.1 status: ...
+semantic_text                                                 None
+Name: 26, dtype: object"
+"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']",nan,nan,0.8883,"semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object","semantic_text    2017-05-16 info req_id - - - http/1.1 status: ...
+semantic_text                                                 None
+Name: 33, dtype: object"
+"['nova.osapi-compute', 'nova.metadata']","['nova.osapi_compute.wsgi.server', 'nova.metadata.wsgi.server']","nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",0.7182,"semantic_text                                         NaN
+semantic_text    req_id - - - http/1.1 status: len: time:
+Name: 85, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object"
+"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']","nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",1.0,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",nan,nan,1.0,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object","semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object"
+"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",nan,nan,0.7823,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object","semantic_text    2931 info req_id - - - instance:
+semantic_text                                None
+Name: 65, dtype: object"
+"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",nan,nan,0.7608,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object","semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object"
+"['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']","['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']",0.7608,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object"
+['nova.compute'],['nova.compute.claims'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id attempting claim: mem...
+Name: 87, dtype: object","semantic_text    req_id - - - instance_id attempting claim: mem...
+semantic_text                                                 None
+Name: 17, dtype: object"
+['nova.compute'],['nova.compute.claims'],nan,nan,0.8098,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id attempting claim: mem...
+Name: 87, dtype: object","semantic_text    2931 info nova.compute.claims req_id - - - ins...
+semantic_text                                                 None
+Name: 38, dtype: object"
+['nova.compute'],['nova.compute.claims'],nan,nan,0.7104,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id attempting claim: mem...
+Name: 87, dtype: object","semantic_text    2931 info nova.compute.claims req_id - - - ins...
+semantic_text                                                 None
+Name: 37, dtype: object"
+['nova.compute'],['nova.compute.claims'],nan,nan,0.7052,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id attempting claim: mem...
+Name: 87, dtype: object","semantic_text    nova-compute.log.1.2017-05-16_13:55:31 2017-05...
+semantic_text                                                 None
+Name: 6, dtype: object"
+['nova.compute'],['nova.compute.claims'],nan,nan,0.676,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id attempting claim: mem...
+Name: 87, dtype: object","semantic_text    req_id - - - - - while synchronizing instance ...
+semantic_text                                                 None
+Name: 8, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to build...
+Name: 88, dtype: object","semantic_text    req_id - - - instance_id took seconds to build...
+semantic_text                                                 None
+Name: 24, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.791,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to build...
+Name: 88, dtype: object","semantic_text    req_id - - - instance_id took seconds to deall...
+semantic_text                                                 None
+Name: 19, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.768,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to build...
+Name: 88, dtype: object","semantic_text    req_id - - - instance_id took seconds to the i...
+semantic_text                                                 None
+Name: 25, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to deall...
+Name: 89, dtype: object","semantic_text    req_id - - - instance_id took seconds to deall...
+semantic_text                                                 None
+Name: 19, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.791,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to deall...
+Name: 89, dtype: object","semantic_text    req_id - - - instance_id took seconds to build...
+semantic_text                                                 None
+Name: 24, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.7155,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to deall...
+Name: 89, dtype: object","semantic_text    2931 info nova.compute.manager req_id - - - in...
+semantic_text                                                 None
+Name: 42, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to the i...
+Name: 90, dtype: object","semantic_text    req_id - - - instance_id took seconds to the i...
+semantic_text                                                 None
+Name: 25, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.768,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to the i...
+Name: 90, dtype: object","semantic_text    req_id - - - instance_id took seconds to build...
+semantic_text                                                 None
+Name: 24, dtype: object"
+['nova.compute'],['nova.compute.manager'],nan,nan,0.7154,"semantic_text                                                  NaN
+semantic_text    req_id - - - instance_id took seconds to the i...
+Name: 90, dtype: object","semantic_text    req_id - - - instance_id took seconds to deall...
+semantic_text                                                 None
+Name: 19, dtype: object"
+nova.compute,nova.compute.manager,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object"
+nova.compute,nova.compute.manager,nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object","semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object"
+nova.compute,nova.compute.manager,nan,nan,0.9596,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object","semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object"
+nova.compute,nova.compute.manager,['nova.compute'],['nova.compute.manager'],0.9596,"semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 91, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object"
+nova.compute,nova.compute.manager,nan,nan,1.0,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 92, dtype: object","semantic_text    - instance_id vm stopped lifecycle event
+semantic_text                                        None
+Name: 15, dtype: object"
+nova.compute,nova.compute.manager,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 92, dtype: object","semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 72, dtype: object"
+nova.compute,nova.compute.manager,nan,nan,0.7145,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 92, dtype: object","semantic_text    2931 info nova.compute.manager - instance: vm ...
+semantic_text                                                 None
+Name: 36, dtype: object"
+nova.compute,nova.compute.manager,nan,nan,0.6588,"semantic_text                                         NaN
+semantic_text    - instance_id vm stopped lifecycle event
+Name: 92, dtype: object","semantic_text    nova-compute.log.1.2017-05-16_13:55:31 2017-05...
+semantic_text                                                 None
+Name: 23, dtype: object"
+"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",nan,nan,1.0,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object","semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object"
+"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager","['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']",1.0,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object"
+"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager",nan,nan,0.7608,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object","semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object"
+"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager","nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",0.7608,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object"
+"nova.compute, nova.virt, nova.scheduler","nova.compute.manager, nova.virt.libvirt.imagecache, nova.compute.resource_tracker, nova.scheduler.host_manager","['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",0.7608,"semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 93, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+nova.compute,nova.compute.manager,nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object","semantic_text    req_id - - - - - instance_id during sync_power...
+semantic_text                                                 None
+Name: 30, dtype: object"
+nova.compute,nova.compute.manager,['nova.compute'],['nova.compute.manager'],1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 79, dtype: object"
+nova.compute,nova.compute.manager,['nova.compute'],['nova.compute.manager'],0.9596,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object","semantic_text                                                  NaN
+semantic_text    - instance_id during sync_power_state the inst...
+Name: 70, dtype: object"
+nova.compute,nova.compute.manager,nan,nan,0.9596,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - instance_id during sync_power...
+Name: 94, dtype: object","semantic_text    - instance_id during sync_power_state the inst...
+semantic_text                                                 None
+Name: 69, dtype: object"
+nova.scheduler,nova.scheduler.host_manager,nan,nan,1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object","semantic_text    req_id - - - - - the instance sync for host cp...
+semantic_text                                                 None
+Name: 10, dtype: object"
+nova.scheduler,nova.scheduler.host_manager,['nova.scheduler'],['nova.scheduler.host_manager'],1.0,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 81, dtype: object"
+nova.scheduler,nova.scheduler.host_manager,nan,nan,0.8165,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object","semantic_text    25998 info nova.scheduler.host_manager req_id ...
+semantic_text                                                 None
+Name: 62, dtype: object"
+nova.scheduler,nova.scheduler.host_manager,['nova.compute'],['nova.compute.manager'],0.7458,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - - - running instance usage audit ...
+Name: 80, dtype: object"
+nova.scheduler,nova.scheduler.host_manager,nan,nan,0.7458,"semantic_text                                                  NaN
+semantic_text    req_id - - - - - the instance sync for host cp...
+Name: 95, dtype: object","semantic_text    req_id - - - - - running instance usage audit ...
+semantic_text                                                 None
+Name: 13, dtype: object"
+nova.api,nova.api.openstack.compute.server_external_events,nan,nan,1.0,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object","semantic_text    req_id - - - creating event for instance
+semantic_text                                        None
+Name: 31, dtype: object"
+nova.api,nova.api.openstack.compute.server_external_events,['nova.api'],['nova.api.openstack.compute.server_external_events'],1.0,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object","semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 83, dtype: object"
+nova.api,nova.api.openstack.compute.server_external_events,nan,nan,0.7041,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object","semantic_text    req_id - - - http exception thrown: no instanc...
+semantic_text                                                 None
+Name: 18, dtype: object"
+nova.api,nova.api.openstack.compute.server_external_events,['nova.api'],['nova.api.openstack.wsgi'],0.7041,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object","semantic_text                                                  NaN
+semantic_text    req_id - - - http exception thrown: no instanc...
+Name: 84, dtype: object"
+nova.api,nova.api.openstack.compute.server_external_events,nan,nan,0.6506,"semantic_text                                         NaN
+semantic_text    req_id - - - creating event for instance
+Name: 96, dtype: object","semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object"
+"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver","['nova.compute', 'nova.virt']","['nova.compute.manager', 'nova.compute.claims', 'nova.virt.libvirt.driver']",1.0,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object","semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 86, dtype: object"
+"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",nan,nan,1.0,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object","semantic_text    req_id - - - instance_id
+semantic_text                        None
+Name: 2, dtype: object"
+"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",nan,nan,0.7823,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object","semantic_text    2931 info req_id - - - instance:
+semantic_text                                None
+Name: 65, dtype: object"
+"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver",nan,nan,0.7608,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object","semantic_text    req_id - - - - -
+semantic_text                None
+Name: 4, dtype: object"
+"nova.compute, nova.virt","nova.compute.manager, nova.compute.claims, nova.virt.libvirt.driver","['nova.compute', 'nova.virt', 'nova.scheduler']","['nova.compute.manager', 'nova.virt.libvirt.imagecache', 'nova.compute.resource_tracker', 'nova.scheduler.host_manager']",0.7608,"semantic_text                         NaN
+semantic_text    req_id - - - instance_id
+Name: 97, dtype: object","semantic_text                 NaN
+semantic_text    req_id - - - - -
+Name: 74, dtype: object"
