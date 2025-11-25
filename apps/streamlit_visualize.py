@@ -55,8 +55,11 @@ st.subheader("⚙️ Pipeline Execution")
 # Pipeline inputs (same flags as scripts/run_full_pipeline.py)
 source = st.text_input("Log source (file or directory)", value="data/sample_raw.csv")
 sample = st.number_input("Sample size", value=1000, min_value=1, step=1)
-db_path = st.text_input("Edges DB path", value="data/edges_full_pipeline.db")
-chroma_dir = st.text_input("Chroma persist dir", value="data/datasets/embeddings/chroma_smoke")
+# Prefer centralized defaults from config.settings when available
+db_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_DB", "data/edges/edges_smoke.db")
+chroma_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_CHROMA_DIR", "data/chroma_db/chroma_smoke")
+db_path = st.text_input("Edges DB path", value=db_default)
+chroma_dir = st.text_input("Chroma persist dir", value=chroma_default)
 top_k = st.number_input("Top K", value=10, min_value=1, step=1)
 threshold = st.number_input("Threshold", value=0.2, min_value=0.0, max_value=1.0, format="%.2f")
 alpha = st.number_input("Alpha (hybrid)", value=0.5, min_value=0.0, max_value=1.0, format="%.2f")
@@ -141,7 +144,8 @@ def _run_pipeline_direct(
                 device = "cuda" if (_os.environ.get("CUDA_VISIBLE_DEVICES") or _os.path.exists("/usr/local/cuda")) else "cpu"
 
             # Attempt to load embeddings from disk cache (validate metadata)
-            out_dir = Path("data/datasets/embeddings")
+            emb_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
+            out_dir = Path(emb_default)
             emb_path = out_dir / "embeddings.npy"
             meta_path = out_dir / "embeddings.meta.json"
             docs = aggregated["semantic_text"].fillna("").astype(str).tolist()

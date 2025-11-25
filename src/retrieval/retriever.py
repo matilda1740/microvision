@@ -7,6 +7,8 @@ from __future__ import annotations
 from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Tuple
 import math
 import numpy as np
+import logging
+from config.settings import settings
 
 try:
     # chromadb is optional for unit tests that don't touch vector DBs
@@ -105,7 +107,8 @@ def compute_candidate_edges_stream(
             id_col = col
             break
 
-    timestamp_candidates = ("timestamp", "time", "ts", "created_at")
+    # Prefer an explicit canonical timestamp column when present
+    timestamp_candidates = ("timestamp_canonical", "timestamp", "time", "ts", "created_at")
     ts_col = None
     for c in timestamp_candidates:
         if c in df.columns:
@@ -115,6 +118,75 @@ def compute_candidate_edges_stream(
     id_to_index = None
     if id_col is not None:
         id_to_index = {str(v): int(i) for i, v in enumerate(df[id_col].values)}
+
+    logger = logging.getLogger(__name__)
+
+    def _canonical_timestamp_from_value(val) -> Optional[Any]:
+        """Coerce metadata/df timestamp-like value into a pandas.Timestamp (UTC) or None.
+
+        Handles single strings, comma-separated strings, lists/tuples/ndarrays, and pandas Index/Series.
+        Uses `settings.DEFAULT_TIMESTAMP_POLICY` when choosing a canonical value from multiple timestamps.
+        """
+        if pd is None:
+            return None
+        if val is None:
+            return None
+        seq = None
+        try:
+            if isinstance(val, (list, tuple)):
+                seq = list(val)
+            elif isinstance(val, (pd.Index, pd.Series)):
+                seq = list(val)
+            elif isinstance(val, str) and "," in val:
+                seq = [s.strip() for s in val.split(",") if s.strip()]
+        except Exception:
+            seq = None
+
+        if seq is None:
+            try:
+                ts = pd.to_datetime(val, utc=True, errors="coerce")
+                if pd.isna(ts):
+                    return None
+                return ts
+            except Exception:
+                return None
+
+        parsed = []
+        for element in seq:
+            try:
+                ts2 = pd.to_datetime(element, utc=True, errors="coerce")
+                if pd.isna(ts2):
+                    continue
+                parsed.append(ts2)
+            except Exception:
+                continue
+
+        if not parsed:
+            return None
+
+        parsed_sorted = sorted(parsed)
+        policy = getattr(settings, "DEFAULT_TIMESTAMP_POLICY", "median")
+        if policy == "latest":
+            return parsed_sorted[-1]
+        if policy == "earliest":
+            return parsed_sorted[0]
+        if policy == "first":
+            for element in seq:
+                try:
+                    ts_try = pd.to_datetime(element, utc=True, errors="coerce")
+                    if not pd.isna(ts_try):
+                        return ts_try
+                except Exception:
+                    continue
+            return parsed_sorted[0]
+        # median default
+        m = len(parsed_sorted)
+        if m % 2 == 1:
+            return parsed_sorted[m // 2]
+        t0 = parsed_sorted[m // 2 - 1].value
+        t1 = parsed_sorted[m // 2].value
+        mid = (int(t0) + int(t1)) // 2
+        return pd.to_datetime(mid, unit="ns", utc=True)
 
     if collection is not None:
         if embeddings is None:
@@ -135,9 +207,43 @@ def compute_candidate_edges_stream(
                 sim = None if dist is None else max(0.0, 1.0 - float(dist))
 
                 semantic_cosine = None
-                if embeddings is not None and id_to_index is not None and str(tgt_id) in id_to_index:
+                tgt_index = None
+                canonical_target_id = None
+
+                # Prefer matching a canonical id value (e.g. template_id) returned
+                # directly by the collection. This ensures target_id stored in the
+                # edges table is the meaningful template identifier.
+                if id_to_index is not None and tgt_id is not None and str(tgt_id) in id_to_index:
                     tgt_index = id_to_index[str(tgt_id)]
-                    semantic_cosine = _cosine_sim(q_embs[src_idx], np.asarray(embeddings)[tgt_index])
+                    try:
+                        if id_col is not None:
+                            canonical_target_id = str(df.iloc[tgt_index][id_col])
+                    except Exception:
+                        canonical_target_id = None
+
+                # If we didn't resolve by canonical id, try interpreting the
+                # returned id as a numeric positional index (some ingestion
+                # pipelines use stringified integers as ids).
+                if tgt_index is None and tgt_id is not None:
+                    try:
+                        maybe_idx = int(tgt_id)
+                        if 0 <= maybe_idx < len(df):
+                            tgt_index = maybe_idx
+                            try:
+                                if id_col is not None:
+                                    canonical_target_id = str(df.iloc[tgt_index][id_col])
+                            except Exception:
+                                canonical_target_id = None
+                    except Exception:
+                        # not a numeric id — leave tgt_index as None
+                        pass
+
+                # Compute semantic cosine when we have a resolved target index
+                if tgt_index is not None:
+                    try:
+                        semantic_cosine = _cosine_sim(q_embs[src_idx], np.asarray(embeddings)[tgt_index])
+                    except Exception:
+                        semantic_cosine = None
 
                 source_timestamp = None
                 target_timestamp = None
@@ -152,15 +258,26 @@ def compute_candidate_edges_stream(
                         if k in meta and meta[k] is not None:
                             target_timestamp = meta[k]
                             break
-                if source_timestamp is not None and target_timestamp is not None:
-                    try:
+                # compute canonical timestamps for storage and delta computation
+                source_timestamp_canonical = None
+                target_timestamp_canonical = None
+                try:
+                    if source_timestamp is not None:
+                        stc = _canonical_timestamp_from_value(source_timestamp)
+                        source_timestamp_canonical = None if stc is None else stc.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    if target_timestamp is not None:
+                        ttc = _canonical_timestamp_from_value(target_timestamp)
+                        target_timestamp_canonical = None if ttc is None else ttc.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    if source_timestamp_canonical is not None and target_timestamp_canonical is not None:
                         import pandas as _pd
 
-                        st = _pd.to_datetime(source_timestamp)
-                        tt = _pd.to_datetime(target_timestamp)
+                        st = _pd.to_datetime(source_timestamp_canonical)
+                        tt = _pd.to_datetime(target_timestamp_canonical)
                         time_delta_ms = float((tt - st).total_seconds() * 1000.0)
-                    except Exception:
+                    else:
                         time_delta_ms = None
+                except Exception:
+                    time_delta_ms = None
 
                 retrieval_distance = dist
                 retrieval_similarity = None if retrieval_distance is None else max(0.0, 1.0 - float(retrieval_distance))
@@ -178,19 +295,39 @@ def compute_candidate_edges_stream(
                     continue
 
                 if hybrid >= threshold:
+                    # decide stored target_id: prefer canonical_target_id, then
+                    # DataFrame lookup by tgt_index, then fall back to raw returned id
+                    if canonical_target_id is not None:
+                        stored_target_id = canonical_target_id
+                    elif tgt_index is not None and id_col is not None:
+                        try:
+                            stored_target_id = str(df.iloc[tgt_index][id_col])
+                        except Exception:
+                            stored_target_id = tgt_id
+                    else:
+                        stored_target_id = tgt_id
+
+                    # Log unresolved cases for later debugging: when we could not
+                    # map the returned id to a canonical template id.
+                    if id_col is not None and (stored_target_id is None or (isinstance(stored_target_id, str) and str(stored_target_id) not in id_to_index)):
+                        logger.debug("unresolved target id mapping: src_idx=%s returned_id=%r tgt_index=%r canonical=%r", src_idx, tgt_id, tgt_index, canonical_target_id)
+
                     yield {
                         "source_index": int(src_idx),
                         "source_id": src_id,
-                        "target_id": tgt_id,
+                        "target_id": stored_target_id,
                         "target_metadata": meta,
                         "source_timestamp": source_timestamp,
                         "target_timestamp": target_timestamp,
+                        "source_timestamp_canonical": source_timestamp_canonical,
+                        "target_timestamp_canonical": target_timestamp_canonical,
                         "time_delta_ms": time_delta_ms,
                         "retrieval_distance": retrieval_distance,
                         "retrieval_similarity": retrieval_similarity,
                         "semantic_cosine": semantic_cosine,
                         "hybrid_score": hybrid,
                         "alpha": float(alpha),
+                        "target_semantic_text": (meta.get("semantic_text") if isinstance(meta, dict) else None),
                     }
 
         return
@@ -229,10 +366,13 @@ def compute_candidate_edges_stream(
                     except Exception:
                         source_timestamp = None
 
+                # When running purely on embeddings (no collection), prefer
+                # writing the canonical id value from the dataframe if present.
+                tgt_id_val = df.iloc[tgt_idx][id_col] if (id_col is not None) else int(tgt_idx)
                 yield {
                     "source_index": int(src_idx),
                     "source_id": None if id_col is None else df.iloc[src_idx][id_col],
-                    "target_id": int(tgt_idx),
+                    "target_id": tgt_id_val,
                     "target_metadata": None,
                     "source_timestamp": source_timestamp,
                     "target_timestamp": target_timestamp,

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 import logging
+import json
 
 try:
     import pandas as pd
@@ -20,6 +21,7 @@ except Exception:  # pragma: no cover - numpy optional here
     np = None
 
 logger = logging.getLogger(__name__)
+from config.settings import settings
 
 
 def df_to_metadatas(
@@ -48,15 +50,14 @@ def df_to_metadatas(
 
     # choose metadata columns
     if meta_cols is None:
-        default_cols = [
-            "template",
-            "component",
-            "doc_id",
-            "id",
-            "line_no",
-            "orig_idx",
-            "timestamp",
-        ]
+        # Use centralized default metadata columns when available to avoid
+        # duplicating the list across callers. Fall back to a small safe
+        # default if the setting is not present.
+        default_cols = getattr(
+            settings,
+            "DEFAULT_META_COLS",
+            ["template", "component", "doc_id", "id", "line_no", "orig_idx", "timestamp"],
+        )
         meta_cols = [c for c in default_cols if c in df.columns]
     else:
         meta_cols = [c for c in meta_cols if c in df.columns]
@@ -90,42 +91,75 @@ def df_to_metadatas(
                         seq = val.tolist()
                     elif isinstance(val, (list, tuple)):
                         seq = list(val)
+                    elif isinstance(val, str) and "," in val:
+                        seq = [s.strip() for s in val.split(",") if s.strip()]
                     else:
                         seq = None
 
                     if seq is not None:
-                        parsed_strs = []
+                        # Parse each element into a pandas Timestamp (UTC)
+                        parsed = []
                         for element in seq:
-                                try:
-                                    ts2 = pd.to_datetime(element, errors="coerce")
-                                    if pd.isna(ts2):
-                                        continue
-                                    try:
-                                        ts2 = ts2.tz_convert("UTC") if ts2.tzinfo is not None else ts2.tz_localize("UTC")
-                                    except Exception:
-                                        pass
-                                    parsed_strs.append(ts2.strftime("%Y-%m-%dT%H:%M:%SZ"))
-                                except Exception:
-                                    # log and continue — some list elements may be non-datetime
+                            try:
+                                ts2 = pd.to_datetime(element, utc=True, errors="coerce")
+                                if pd.isna(ts2):
                                     logger.debug("df_to_metadatas: could not parse timestamp element=%r for col=%s (row=%d)", element, col, i)
                                     continue
-                        if len(parsed_strs) == 0:
+                                parsed.append(ts2)
+                            except Exception:
+                                logger.debug("df_to_metadatas: exception parsing timestamp element=%r for col=%s (row=%d)", element, col, i)
+                                continue
+
+                        if len(parsed) == 0:
                             row_meta[col] = None
-                        elif len(parsed_strs) == 1:
-                            row_meta[col] = parsed_strs[0]
                         else:
-                            row_meta[col] = ", ".join(parsed_strs)
+                            # sort parsed timestamps
+                            parsed_sorted = sorted(parsed)
+                            # compute canonical timestamp per settings
+                            policy = getattr(settings, "DEFAULT_TIMESTAMP_POLICY", "median")
+                            canonical = None
+                            if policy == "latest":
+                                canonical = parsed_sorted[-1]
+                            elif policy == "earliest":
+                                canonical = parsed_sorted[0]
+                            elif policy == "first":
+                                # first element by original order that parsed successfully
+                                for element in seq:
+                                    try:
+                                        ts_try = pd.to_datetime(element, utc=True, errors="coerce")
+                                        if not pd.isna(ts_try):
+                                            canonical = ts_try
+                                            break
+                                    except Exception:
+                                        continue
+                                if canonical is None:
+                                    canonical = parsed_sorted[0]
+                            else:
+                                # median by position; for even counts take midpoint
+                                m = len(parsed_sorted)
+                                if m % 2 == 1:
+                                    canonical = parsed_sorted[m // 2]
+                                else:
+                                    t0 = parsed_sorted[m // 2 - 1].value
+                                    t1 = parsed_sorted[m // 2].value
+                                    mid = (int(t0) + int(t1)) // 2
+                                    canonical = pd.to_datetime(mid, unit="ns", utc=True)
+
+                            # format ISO strings with Z for UTC
+                            iso_list = [ts.strftime("%Y-%m-%dT%H:%M:%SZ") for ts in parsed_sorted]
+                            canonical_iso = canonical.strftime("%Y-%m-%dT%H:%M:%SZ") if canonical is not None else None
+                            # store canonical scalar and full list (serialize list as JSON string)
+                            row_meta[col] = canonical_iso
+                            plural_key = (col + "s") if not col.endswith("s") else (col + "_list")
+                            try:
+                                row_meta[plural_key] = json.dumps(iso_list)
+                            except Exception:
+                                row_meta[plural_key] = ", ".join(iso_list)
                     else:
-                        ts = pd.to_datetime(val, errors="coerce")
+                        ts = pd.to_datetime(val, utc=True, errors="coerce")
                         if pd.isna(ts):
                             row_meta[col] = None
                         else:
-                            # convert to UTC then format as ISO Zulu
-                            try:
-                                ts = ts.tz_convert("UTC") if ts.tzinfo is not None else ts.tz_localize("UTC")
-                            except Exception:
-                                # If already tz-aware or cannot localize, ignore
-                                pass
                             row_meta[col] = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
                 except Exception:
                     # fallback: stringify

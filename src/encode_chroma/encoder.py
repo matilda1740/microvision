@@ -15,6 +15,7 @@ import json
 import pandas as pd
 
 from src.encode_chroma.encode_utils import df_to_metadatas
+from config.settings import settings
 
 
 def _ensure_dir(path: Path) -> None:
@@ -27,7 +28,7 @@ def encode_templates(
     model=None,
     model_name: Optional[str] = None,
     device: Optional[str] = None,
-    output_dir: str = "data/datasets/embeddings",
+    output_dir: str | None = None,
     collection_name: str = "smoke_collection",
     chroma_dir: Optional[str] = None,
     force_recompute: bool = False,
@@ -46,7 +47,9 @@ def encode_templates(
     if "semantic_text" not in input_df.columns:
         raise KeyError("input_df must contain a 'semantic_text' column")
 
-    out_dir = Path(output_dir)
+    # Resolve output directory: prefer explicit arg, otherwise fall back to settings
+    resolved_out = output_dir if output_dir is not None else getattr(settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
+    out_dir = Path(resolved_out)
     _ensure_dir(out_dir)
     emb_path = out_dir / "embeddings.npy"
     index_path = out_dir / "embeddings_index.csv"

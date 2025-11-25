@@ -181,7 +181,7 @@ def main():
     uploaded = st.file_uploader("Upload log file", type=["log", "txt", "csv"], help="Max size configurable below")
 
     jobs_db = st.text_input("Jobs DB path", value="data/jobs.db")
-    edges_db = st.text_input("Edges DB path", value="data/edges.db")
+    edges_db = st.text_input("Edges DB path", value=getattr(settings, "DEFAULT_DB", "data/edges.db"))
     # mapping path override (optional)
     map_path_override = st.text_input("Service map path (optional override)", value="")
     # session toggle: show display names vs raw tokens

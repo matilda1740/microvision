@@ -42,13 +42,14 @@ from config.settings import settings
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--merged", required=False, default=getattr(settings, "DEFAULT_MERGED", "data/sample_raw_merged.csv"), help="Path to merged templates CSV")
-    p.add_argument("--chroma-dir", default=getattr(settings, "DEFAULT_CHROMA_DIR", "data/datasets/embeddings/chroma_smoke"))
-    p.add_argument("--db", default=getattr(settings, "DEFAULT_DB", "data/edges_full_pipeline.db"))
+    p.add_argument("--chroma-dir", default=getattr(settings, "DEFAULT_CHROMA_DIR", "data/chroma_db/chroma_smoke"))
+    p.add_argument("--db", default=getattr(settings, "DEFAULT_DB", "data/edges/edges.db"))
     p.add_argument("--top-k", type=int, default=getattr(settings, "DEFAULT_TOP_K", 10))
     p.add_argument("--threshold", type=float, default=getattr(settings, "DEFAULT_THRESHOLD", 0.2))
     p.add_argument("--alpha", type=float, default=getattr(settings, "DEFAULT_ALPHA", 0.5))
     p.add_argument("--device", default=getattr(settings, "DEFAULT_DEVICE", None))
     p.add_argument("--model", default=None)
+    p.add_argument("--clear-db", action="store_true", help="Clear the edges table in the target DB before writing (destructive)")
     p.add_argument("--debug", action="store_true", help="Enable debug logging")
     return p.parse_args()
 
@@ -117,7 +118,8 @@ def main() -> int:
     # compute embeddings via central helper (no ingest here)
     # Force recompute to avoid re-using a stale embeddings cache that may have
     # different length than the current input dataframe (common in test runs).
-    embeddings, index_df, _ = encode_templates(df, model=None, model_name=model_name, device=device, output_dir="data/datasets/embeddings", chroma_dir=None, force_recompute=True)
+    embeddings_out_dir = getattr(settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
+    embeddings, index_df, _ = encode_templates(df, model=None, model_name=model_name, device=device, output_dir=embeddings_out_dir, chroma_dir=None, force_recompute=True)
     documents = df["semantic_text"].fillna("").astype(str).tolist()
 
     # ingest into chroma
@@ -130,12 +132,26 @@ def main() -> int:
     top_k = int(args.top_k)
     alpha = float(args.alpha)
     threshold = float(args.threshold)
-    gen = compute_candidate_edges_stream(df, embeddings=embeddings, collection=collection, top_k=top_k, threshold=threshold, batch_size=128, alpha=alpha)
+    # Ensure retriever knows about the canonical id column (template_id)
+    id_column_candidates = ("template_id", "reqid", "template", "pid")
+    gen = compute_candidate_edges_stream(
+        df,
+        embeddings=embeddings,
+        collection=collection,
+        top_k=top_k,
+        threshold=threshold,
+        batch_size=128,
+        alpha=alpha,
+        id_column_candidates=id_column_candidates,
+    )
 
     # persist edges
     db_path = args.db
     store = EdgeStore(db_path)
     store.init_db()
+    if getattr(args, "clear_db", False):
+        print(f"--clear-db specified: clearing edges table in {db_path} before writing")
+        store.clear_edges(reset_sequence=True)
     print(f"Writing edges to {db_path} ...")
     edges_written = store.write_edges(gen, batch_size=500)
     print(f"Edges written: {edges_written}")

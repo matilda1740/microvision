@@ -1,7 +1,8 @@
 """CLI to export transitions table to CSV for offline analysis.
 
 Example:
-    python scripts/export_transitions.py --db data/edges.db --out transitions.csv
+    # Use the project's configured default DB path from config.settings
+    python scripts/export_transitions.py --db "$(python -c \"from config.settings import settings; print(settings.DEFAULT_DB)\")" --out transitions.csv
 """
 from __future__ import annotations
 

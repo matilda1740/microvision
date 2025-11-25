@@ -88,16 +88,35 @@ def extract_and_build_metadata(
                     meta[key] = base_row[f]
 
     # 3) timestamp reconstruction
-    date_str = meta.get("date") or (base_row.get("Date") if base_row is not None else "")
-    time_str = meta.get("time") or (base_row.get("Time") if base_row is not None else "")
+    # Accept both lower- and upper-cased base_row keys since callers may
+    # canonicalize keys to lowercase before passing the series.
+    def _get_base(key):
+        if base_row is None:
+            return ""
+        # try exact, then lowercase, then capitalized
+        for k in (key, key.lower(), key.capitalize()):
+            try:
+                if k in base_row and pd.notna(base_row[k]):
+                    return base_row[k]
+            except Exception:
+                continue
+        return ""
+
+    date_str = meta.get("date") or _get_base("Date")
+    time_str = meta.get("time") or _get_base("Time")
     date_str = str(date_str).strip()
     time_str = str(time_str).strip()
     if date_str and time_str:
         # Be flexible with time formats: try a forgiving parse first so we accept
-        # timestamps with or without fractional seconds. This avoids dropping the
-        # timestamp when microseconds are absent.
-        ts = pd.to_datetime(f"{date_str} {time_str}", errors="coerce")
-        meta["timestamp"] = ts if pd.notna(ts) else None
+        # timestamps with or without fractional seconds. Normalize to UTC ISO string.
+        ts = pd.to_datetime(f"{date_str} {time_str}", errors="coerce", utc=True)
+        if pd.notna(ts):
+            try:
+                meta["timestamp"] = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
+            except Exception:
+                meta["timestamp"] = str(ts.isoformat())
+        else:
+            meta["timestamp"] = None
     else:
         meta["timestamp"] = None
 

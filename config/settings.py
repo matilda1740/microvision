@@ -6,7 +6,7 @@ load_dotenv()
 
 class Settings:
     # Dataset paths
-    DATASET_DIR = "data/datasets"
+    DATA_DIR = "data"
     PROCESSED_DIR = "data/processed"
     
     # Batch processing configuration
@@ -40,10 +40,25 @@ class Settings:
 
     # Runner defaults (centralized from notebook/script ad-hoc values)
     DEFAULT_SAMPLE = 1000
-    DEFAULT_DB = "data/edges_full_pipeline.db"
-    DEFAULT_CHROMA_DIR = "data/datasets/embeddings/chroma_smoke"
+    DEFAULT_DB = "data/edges/edges.db"
+    DEFAULT_CHROMA_DIR = "data/chroma_db/chroma_smoke"
+    # Directory where embedding artifacts (embeddings.npy, embeddings_index.csv, etc.) are written
+    DEFAULT_EMBEDDINGS_DIR = "data/edges"
     DEFAULT_TOP_K = 10
     DEFAULT_THRESHOLD = 0.2
+    # Timestamp normalization policy: one of 'median', 'latest', 'earliest', 'first'
+    DEFAULT_TIMESTAMP_POLICY = "median"
+    # Default metadata columns to include when building metadatas for vector stores.
+    # Can be overridden per-call by passing `meta_cols` to `df_to_metadatas`.
+    DEFAULT_META_COLS = [
+        "template_id",
+        "template",
+        "component",
+        "semantic_text",
+        "doc_id",
+        "orig_idx",
+        "timestamp",
+    ]
     DEFAULT_ALPHA = 0.5
     DEFAULT_DEVICE = None
 

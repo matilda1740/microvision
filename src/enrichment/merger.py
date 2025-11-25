@@ -15,6 +15,7 @@ import numpy as np
 
 import pandas as pd
 import logging
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,16 @@ def merge_structured_metadata(
     # shallow copies to avoid mutating inputs
     cleaned = cleaned_df.copy()
     structured = structured_df.copy()
+
+    # Normalize column names to avoid stray whitespace/newline issues
+    try:
+        cleaned.columns = [c.strip() if isinstance(c, str) else c for c in cleaned.columns]
+    except Exception:
+        pass
+    try:
+        structured.columns = [c.strip() if isinstance(c, str) else c for c in structured.columns]
+    except Exception:
+        pass
 
     if id_col_single not in structured.columns:
         raise MergeError(f"structured_df must contain '{id_col_single}' column")
@@ -308,6 +319,61 @@ def merge_structured_metadata(
                         flat.append(s)
         return flat
 
+
+    def canonical_from_list(ts_list):
+        """Pick a canonical timestamp string from a list of timestamp-like values.
+
+        Uses the project's DEFAULT_TIMESTAMP_POLICY (median/latest/earliest/first).
+        Returns an ISO-like UTC string or None if no valid timestamps found.
+        """
+        if not ts_list:
+            return None
+        parsed = []
+        for it in ts_list:
+            if it is None:
+                continue
+            try:
+                ts = pd.to_datetime(it, utc=True, errors="coerce")
+                if pd.notna(ts):
+                    parsed.append(ts)
+            except Exception:
+                continue
+        if not parsed:
+            return None
+        parsed_sorted = sorted(parsed)
+        policy = getattr(settings, "DEFAULT_TIMESTAMP_POLICY", "median")
+        if policy == "latest":
+            sel = parsed_sorted[-1]
+        elif policy == "earliest":
+            sel = parsed_sorted[0]
+        elif policy == "first":
+            # return the first parseable element in original order
+            for it in ts_list:
+                try:
+                    ts_try = pd.to_datetime(it, utc=True, errors="coerce")
+                    if pd.notna(ts_try):
+                        sel = ts_try
+                        break
+                except Exception:
+                    continue
+        else:
+            # median
+            m = len(parsed_sorted)
+            if m % 2 == 1:
+                sel = parsed_sorted[m // 2]
+            else:
+                t0 = parsed_sorted[m // 2 - 1].value
+                t1 = parsed_sorted[m // 2].value
+                mid = (int(t0) + int(t1)) // 2
+                sel = pd.to_datetime(mid, unit="ns", utc=True)
+        try:
+            return sel.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            try:
+                return str(sel.isoformat())
+            except Exception:
+                return None
+
     # Aggregate per template id (one row per template_id). For each template id
     # we select a representative semantic_text (the most frequent one) and
     # aggregate metadata columns as unique lists. This produces a canonical
@@ -331,6 +397,15 @@ def merge_structured_metadata(
     # Attach representative semantic_text and keep template_ids as a single-element list
     grouped[semantic_col] = grouped[id_col_single].map(lambda v: primary_semantic.get(v, ""))
     grouped["template_ids"] = grouped[id_col_single].apply(lambda v: [v] if pd.notna(v) and str(v) != "" else [])
+
+    # Compute a canonical timestamp string for each aggregated row when timestamp
+    # column is present. This produces a scalar ISO-8601 UTC string for
+    # downstream consumers so time-delta calculations are straightforward.
+    if "timestamp" in grouped.columns:
+        try:
+            grouped["timestamp_canonical"] = grouped["timestamp"].apply(lambda lst: canonical_from_list(lst) if isinstance(lst, (list, tuple)) or lst else canonical_from_list([lst] if lst else []))
+        except Exception:
+            grouped["timestamp_canonical"] = None
 
     # Prefer Drain-provided occurrences (if available in the structured dataframe).
     # structured may contain an 'occurrences' column coming from Drain's cluster sizes
@@ -361,8 +436,21 @@ def merge_structured_metadata(
         logger.exception("Could not prefer Drain occurrences; keeping aggregated occurrences")
 
     # Reorder and persist
+    # Include timestamp_canonical explicitly if present so downstream
+    # stages (encode/retriever) can use a scalar timestamp when available.
     cols = [semantic_col, id_col_single, "template_ids", "occurrences"] + [c for c in meta_cols if c in grouped.columns]
+    if "timestamp_canonical" in grouped.columns and "timestamp" not in cols:
+        cols.append("timestamp_canonical")
+    elif "timestamp_canonical" in grouped.columns and "timestamp" in cols:
+        # Ensure timestamp_canonical appears after timestamp
+        idx = cols.index("timestamp")
+        cols.insert(idx + 1, "timestamp_canonical")
     aggregated = grouped[cols]
+    # Ensure output column names are clean (no stray newlines/whitespace)
+    try:
+        aggregated.columns = [c.strip() if isinstance(c, str) else c for c in aggregated.columns]
+    except Exception:
+        pass
     aggregated.to_csv(output_path, index=False)
 
     # Diagnostics: report remap/missing stats and write sample unresolved ids

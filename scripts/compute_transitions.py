@@ -1,7 +1,8 @@
 """CLI to compute order-1 transitions from an EdgeStore SQLite DB.
 
 Example:
-    python scripts/compute_transitions.py --db data/edges.db --min-count 2
+    # Use the project's configured default DB path from config.settings
+    python scripts/compute_transitions.py --db "$(python -c \"from config.settings import settings; print(settings.DEFAULT_DB)\")" --min-count 2
 """
 from __future__ import annotations
 

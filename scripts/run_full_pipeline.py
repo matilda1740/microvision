@@ -115,13 +115,14 @@ def build_metadatas_from_aggregated(aggregated: pd.DataFrame) -> list[dict]:
     return metas_sanitized
 
 
-def compute_embeddings_for_use_df(use_df: pd.DataFrame, model_name: str | None, device: str | None, output_dir: str = "data/datasets/embeddings") -> tuple[list[list[float]], pd.DataFrame, list[str]]:
+def compute_embeddings_for_use_df(use_df: pd.DataFrame, model_name: str | None, device: str | None, output_dir: str | None = None) -> tuple[list[list[float]], pd.DataFrame, list[str]]:
     """Compute embeddings using centralized helper and return (embeddings, index_df, documents).
     The helper mirrors the previous in-script call: it returns embeddings, index_df and a model object (ignored).
     """
     from src.encode_chroma.encoder import encode_templates
 
-    embeddings, index_df, _ = encode_templates(use_df, model=None, model_name=model_name, device=device, output_dir=output_dir, chroma_dir=None)
+    out_dir = output_dir or getattr(settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
+    embeddings, index_df, _ = encode_templates(use_df, model=None, model_name=model_name, device=device, output_dir=out_dir, chroma_dir=None)
     documents = use_df["semantic_text"].fillna("").astype(str).tolist()
     return embeddings, index_df, documents
 
@@ -140,11 +141,24 @@ def ingest_embeddings_atomic(chroma_dir: Path, ids: list[str], metas: list[dict]
     return client, collection, reused
 
 
-def compute_and_persist_edges(use_df: pd.DataFrame, embeddings: list[list[float]], collection, db_path: str, top_k: int, threshold: float, alpha: float) -> int:
-    gen = compute_candidate_edges_stream(use_df, embeddings=embeddings, collection=collection, top_k=top_k, threshold=threshold, batch_size=128, alpha=alpha)
+def compute_and_persist_edges(use_df: pd.DataFrame, embeddings: list[list[float]], collection, db_path: str, top_k: int, threshold: float, alpha: float, clear_db: bool = False) -> int:
+    # Ensure retriever knows which id columns to consider (include `template_id` from parser)
+    id_column_candidates = ("template_id", "reqid", "template", "pid")
+    gen = compute_candidate_edges_stream(
+        use_df,
+        embeddings=embeddings,
+        collection=collection,
+        top_k=top_k,
+        threshold=threshold,
+        batch_size=128,
+        alpha=alpha,
+        id_column_candidates=id_column_candidates,
+    )
     store = EdgeStore(db_path)
     store.init_db()
     try:
+        if clear_db:
+            store.clear_edges(reset_sequence=True)
         written = store.write_edges(gen, batch_size=500)
     finally:
         store.close()
@@ -226,12 +240,13 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--source", required=True)
     p.add_argument("--sample", type=int, default=getattr(settings, "DEFAULT_SAMPLE", 1000))
-    p.add_argument("--db", default=getattr(settings, "DEFAULT_DB", "data/edges_full_pipeline.db"))
-    p.add_argument("--chroma-dir", default=getattr(settings, "DEFAULT_CHROMA_DIR", "data/datasets/embeddings/chroma_smoke"))
+    p.add_argument("--db", default=getattr(settings, "DEFAULT_DB", "data/edges/edges_smoke.db"))
+    p.add_argument("--chroma-dir", default=getattr(settings, "DEFAULT_CHROMA_DIR", "data/chroma_db/chroma_smoke"))
     p.add_argument("--top-k", type=int, default=getattr(settings, "DEFAULT_TOP_K", 10))
     p.add_argument("--threshold", type=float, default=getattr(settings, "DEFAULT_THRESHOLD", 0.2))
     p.add_argument("--alpha", type=float, default=getattr(settings, "DEFAULT_ALPHA", 0.5))
     p.add_argument("--device", default=getattr(settings, "DEFAULT_DEVICE", None))
+    p.add_argument("--clear-db", action="store_true", help="Clear the edges table in the target DB before writing (destructive)")
     p.add_argument("--model", default=None, help="Override embedding model name (overrides config.settings.EMBEDDING_MODEL)")
     p.add_argument("--format-name", default=None, help="Optional log format name to pick from config.settings.LOG_FORMAT_MAPPINGS (e.g. OpenStack)")
     p.add_argument("--debug", action="store_true", help="Enable debug logging")
@@ -336,6 +351,22 @@ def main():
     try:
         aggregated = merge_structured_metadata(cleaned, parsed_df, str(merged_out))
         print(f"Merged templates written to {merged_out} ({len(aggregated)} rows)")
+        # Quick sanity: count non-empty timestamp_canonical values in the merged output
+        try:
+            if "timestamp_canonical" in aggregated.columns:
+                non_empty = int(aggregated['timestamp_canonical'].fillna('').astype(str).str.strip().replace('', pd.NA).notna().sum())
+            else:
+                non_empty = 0
+            print(f"Merged templates: timestamp_canonical non-empty count = {non_empty} / {len(aggregated)}")
+            manifest["events"].append({
+                "ts": time.time(),
+                "event": "merged_timestamp_canonical_count",
+                "count_non_empty": non_empty,
+                "rows": int(len(aggregated)),
+            })
+        except Exception:
+            # best-effort reporting; do not fail the pipeline on diagnostics
+            pass
         manifest["events"].append({"ts": time.time(), "event": "merged_templates_written", "path": str(merged_out), "rows": len(aggregated)})
         manifest["metrics"]["stages"]["merge"] = {"duration_s": time.time() - t0, "rows": len(aggregated)}
     except MergeError as e:
@@ -451,7 +482,8 @@ def main():
     from src.encode_chroma.encoder import encode_templates
 
     # compute embeddings; do not ask the helper to ingest (chroma_dir=None)
-    embeddings, index_df, _ = encode_templates(use_df, model=None, model_name=model_name, device=device, output_dir="data/datasets/embeddings", chroma_dir=None)
+    embeddings_out_dir = getattr(settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
+    embeddings, index_df, _ = encode_templates(use_df, model=None, model_name=model_name, device=device, output_dir=embeddings_out_dir, chroma_dir=None)
     documents = use_df["semantic_text"].fillna("").astype(str).tolist()
     manifest["metrics"]["stages"]["embeddings"] = {"duration_s": time.time() - t0, "docs": len(documents)}
 
@@ -479,12 +511,26 @@ def main():
         manifest["events"].append({"ts": time.time(), "event": "edge_count_guard_no_adjust", "requested_top_k": requested_top_k, "N": N, "est": est})
 
     print(f"Streaming candidate edges from Chroma with top_k={top_k} ...")
-    gen = compute_candidate_edges_stream(use_df, embeddings=embeddings, collection=collection, top_k=top_k, threshold=args.threshold, batch_size=128, alpha=args.alpha)
+    # Ensure retriever can find the parser's id column (template_id)
+    id_column_candidates = ("template_id", "reqid", "template", "pid")
+    gen = compute_candidate_edges_stream(
+        use_df,
+        embeddings=embeddings,
+        collection=collection,
+        top_k=top_k,
+        threshold=args.threshold,
+        batch_size=128,
+        alpha=args.alpha,
+        id_column_candidates=id_column_candidates,
+    )
 
     # 8) Persist edges
     db_path = args.db
     store = EdgeStore(db_path)
     store.init_db()
+    if getattr(args, "clear_db", False):
+        print(f"--clear-db specified: clearing edges table in {db_path} before writing")
+        store.clear_edges(reset_sequence=True)
     print(f"Writing edges to {db_path} ...")
     t0 = time.time()
     edges_written = store.write_edges(gen, batch_size=500)
