@@ -11,11 +11,8 @@ watch its stdout to update the UI.
 """
 from __future__ import annotations
 
-import re
 import sys
-import subprocess
 import tempfile
-import time
 import datetime
 from pathlib import Path
 
@@ -30,10 +27,21 @@ import streamlit.components.v1 as components
 # repository root to sys.path if imports fail at runtime.
 try:
     from scripts.visualize_graph import load_edges_from_db
-    from src.visualization.graph import edges_to_networkx, write_pyvis_html
-    from src.storage.edge_store import EdgeStore
-    from src.retrieval.retriever import compute_candidate_edges_stream
+    from src.visualization import edges_to_networkx, write_pyvis_html
+    from src.storage import EdgeStore
+    from src.retrieval import compute_candidate_edges_stream
     from src.utils.atomic_write import atomic_save_npy, atomic_write_json
+    from scripts.evaluate_pipeline import load_parsed_logs, generate_ground_truth, load_inferred_edges, calculate_metrics
+    from src.pipeline.stages import (
+        sample_source,
+        parse_sample_rows,
+        load_parsed_df,
+        preprocess_and_merge,
+        build_metadatas_from_aggregated,
+        compute_embeddings_for_use_df,
+        ingest_embeddings_atomic,
+        compute_and_persist_edges,
+    )
 except Exception:
     import pathlib as _pathlib
 
@@ -42,28 +50,77 @@ except Exception:
         sys.path.insert(0, str(repo_root))
     # Retry imports
     from scripts.visualize_graph import load_edges_from_db
-    from src.visualization.graph import edges_to_networkx, write_pyvis_html
-    from src.storage.edge_store import EdgeStore
-    from src.retrieval.retriever import compute_candidate_edges_stream
+    from src.visualization import edges_to_networkx, write_pyvis_html
+    from src.storage import EdgeStore
+    from src.retrieval import compute_candidate_edges_stream
     from src.utils.atomic_write import atomic_save_npy, atomic_write_json
+    from scripts.evaluate_pipeline import load_parsed_logs, generate_ground_truth, load_inferred_edges, calculate_metrics
+    from src.pipeline.stages import (
+        sample_source,
+        parse_sample_rows,
+        load_parsed_df,
+        preprocess_and_merge,
+        build_metadatas_from_aggregated,
+        compute_embeddings_for_use_df,
+        ingest_embeddings_atomic,
+        compute_and_persist_edges,
+    )
 
 
 st.title("Microvision: Pipeline & Graph")
 
+# Sidebar Configuration
+st.sidebar.header("Pipeline Settings")
+
+# Source Selection (Moved to Sidebar for dynamic defaults)
+source_options = {
+    "Sampling Mode": "data/sample_raw.csv",
+    "Full Dataset": "data/OpenStack_full.log"
+}
+
+# Initialize session state for source tracking
+if "last_source" not in st.session_state:
+    st.session_state.last_source = "Sampling Mode"
+
+selected_source_label = st.sidebar.selectbox("Log source", list(source_options.keys()), index=0)
+source = source_options[selected_source_label]
+
+# Update defaults if source changed
+if st.session_state.last_source != selected_source_label:
+    st.session_state.last_source = selected_source_label
+    if selected_source_label == "Full Dataset":
+        st.session_state.sample = 200000
+        st.session_state.threshold = 0.40
+        st.session_state.validate = True
+    else:
+        st.session_state.sample = 1000
+        st.session_state.threshold = 0.20
+        st.session_state.validate = False
+
+# Ensure keys exist if they weren't set by the update block (e.g. first run)
+if "sample" not in st.session_state: st.session_state.sample = 1000
+if "top_k" not in st.session_state: st.session_state.top_k = 10
+if "threshold" not in st.session_state: st.session_state.threshold = 0.2
+if "alpha" not in st.session_state: st.session_state.alpha = 0.5
+if "validate" not in st.session_state: st.session_state.validate = False
+if "resume" not in st.session_state: st.session_state.resume = True
+
+sample = st.sidebar.number_input("Sample size", min_value=1, step=1, key="sample")
+top_k = st.sidebar.number_input("Top K", min_value=1, step=1, key="top_k")
+threshold = st.sidebar.number_input("Threshold", min_value=0.0, max_value=1.0, format="%.2f", key="threshold")
+alpha = st.sidebar.number_input("Alpha (hybrid)", min_value=0.0, max_value=1.0, format="%.2f", key="alpha")
+validate = st.sidebar.checkbox("Enable Cross-Encoder Validation (RAG)", help="Re-rank edges using a Cross-Encoder model. Slower but more accurate.", key="validate")
+resume = st.sidebar.checkbox("Smart Resume", help="Skip sampling, parsing, and preprocessing if data/parsed_sample.csv and data/merged_templates.csv exist.", key="resume")
+
 st.subheader("⚙️ Pipeline Execution")
 
-# Pipeline inputs (same flags as scripts/run_full_pipeline.py)
-source = st.text_input("Log source (file or directory)", value="data/sample_raw.csv")
-sample = st.number_input("Sample size", value=1000, min_value=1, step=1)
 # Prefer centralized defaults from config.settings when available
 db_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_DB", "data/edges/edges_smoke.db")
 chroma_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_CHROMA_DIR", "data/chroma_db/chroma_smoke")
-db_path = st.text_input("Edges DB path", value=db_default)
-chroma_dir = st.text_input("Chroma persist dir", value=chroma_default)
-top_k = st.number_input("Top K", value=10, min_value=1, step=1)
-threshold = st.number_input("Threshold", value=0.2, min_value=0.0, max_value=1.0, format="%.2f")
-alpha = st.number_input("Alpha (hybrid)", value=0.5, min_value=0.0, max_value=1.0, format="%.2f")
-device = st.text_input("Device (leave blank for auto)", value="")
+# Hidden configuration
+db_path = db_default
+chroma_dir = chroma_default
+device = None
 
 
 def _run_pipeline_direct(
@@ -75,6 +132,8 @@ def _run_pipeline_direct(
     threshold: float,
     alpha: float,
     device: str | None = None,
+    validate: bool = False,
+    resume: bool = False,
 ) -> None:
     """Run pipeline stages directly using the refactored functions in
     `scripts.run_full_pipeline.py` and update Streamlit UI spinners.
@@ -83,7 +142,7 @@ def _run_pipeline_direct(
     the stage functions directly, which is more robust and testable.
     """
 
-    from scripts.run_full_pipeline import (
+    from src.pipeline.stages import (
         sample_source,
         parse_sample_rows,
         load_parsed_df,
@@ -93,7 +152,8 @@ def _run_pipeline_direct(
         ingest_embeddings_atomic,
         compute_and_persist_edges,
     )
-    from src.persistence.transitions import compute_and_persist_transitions
+    from src.transitions import compute_and_persist_transitions
+    from src.parsing.metadata_drain_parser import MetadataDrainParser
 
     parsing_ph = st.empty()
     preproc_ph = st.empty()
@@ -113,27 +173,71 @@ def _run_pipeline_direct(
                 st.text(ln)
 
     try:
-        # 1) Sampling + Parsing
-        with st.spinner("Parsing logs..."):
-            _append_log(f"Sampling source={source} sample={sample}")
-            sampled = sample_source(Path(source), int(sample))
-            _append_log(f"Sampled {len(sampled)} rows")
+        # 0) Clear DB to prevent mixing runs
+        # Only clear if NOT resuming, OR if we want to refresh edges even when resuming.
+        # Usually if we resume parsing, we still want to regenerate edges based on new params (threshold etc).
+        # So clearing DB is correct.
+        store = EdgeStore(db_path)
+        store.clear_edges()
+        store.close()
+        _append_log(f"Cleared edges DB: {db_path}")
 
-            parsed_path = Path("data/parsed_sample.csv")
-            templates_path = Path("data/parsed_templates.csv")
+        # 1) Sampling + Parsing
+        parsed_path = Path("data/parsed_sample.csv")
+        templates_path = Path("data/parsed_templates.csv")
+        
+        if resume and parsed_path.exists():
+            st.info(f"Resuming: Found {parsed_path}, skipping parsing.")
+            _append_log(f"Resuming from {parsed_path}")
+            parsed_df = load_parsed_df(parsed_path)
+            parsing_ph.success(f"Loaded {len(parsed_df)} parsed log entries from disk.")
+        else:
+            with st.spinner(f"Sampling {sample} rows from {source}..."):
+                _append_log(f"Sampling source={source} sample={sample}")
+                sampled = sample_source(Path(source), int(sample))
+                _append_log(f"Sampled {len(sampled)} rows")
+
+            # Parsing with Progress Bar
+            parse_msg = st.empty()
+            parse_bar = st.progress(0)
+            parse_msg.text("Parsing logs...")
+            
             save_every = max(1, int(sample) // 4)
-            parse_sample_rows(sampled, parsed_path, templates_path, log_format=None, save_every=save_every)
+            parser = MetadataDrainParser(structured_csv=str(parsed_path), templates_csv=str(templates_path), save_every=save_every, mode="fresh")
+            
+            total_rows = len(sampled)
+            for i, row in enumerate(sampled):
+                raw_line = row.get("raw") or row.get("content") or " ".join([str(v) for v in row.values()])
+                parser.process_line(raw_line, i + 1)
+                
+                if total_rows > 0 and (i % 100 == 0 or i == total_rows - 1):
+                    pct = int((i + 1) / total_rows * 100)
+                    parse_bar.progress(pct, text=f"Parsing: {pct}% ({i+1}/{total_rows})")
+            
+            parser.finalize()
+            parse_bar.empty()
+            parse_msg.empty()
+            
             parsed_df = load_parsed_df(parsed_path)
             parsing_ph.success(f"Parsed {len(parsed_df)} log entries.")
 
         # 2) Preprocessing: cleaning/merge/metadatas
-        with st.spinner("Preprocessing Parsed logs..."):
-            cleaned_path = Path("data/cleaned_templates.csv")
-            merged_out = Path("data/merged_templates.csv")
-            cleaned, aggregated = preprocess_and_merge(parsed_df, cleaned_path, merged_out)
-            _append_log(f"Cleaned={len(cleaned)} merged={len(aggregated)}")
+        cleaned_path = Path("data/cleaned_templates.csv")
+        merged_out = Path("data/merged_templates.csv")
+        
+        if resume and merged_out.exists() and parsed_path.exists():
+            st.info(f"Resuming: Found {merged_out}, skipping preprocessing.")
+            aggregated = pd.read_csv(merged_out)
+            _append_log(f"Loaded {len(aggregated)} aggregated rows from disk.")
             metas = build_metadatas_from_aggregated(aggregated)
-            preproc_ph.success(f"Preprocessed templates: {len(aggregated)} rows")
+            preproc_ph.success(f"Loaded {len(aggregated)} aggregated templates from disk.")
+        else:
+            with st.spinner("Preprocessing Parsed logs..."):
+                cleaned, aggregated = preprocess_and_merge(parsed_df, cleaned_path, merged_out)
+                _append_log(f"Cleaned={len(cleaned)} merged={len(aggregated)}")
+                _append_log(f"Aggregated columns: {list(aggregated.columns)}")
+                metas = build_metadatas_from_aggregated(aggregated)
+                preproc_ph.success(f"Preprocessed templates: {len(aggregated)} rows")
 
         # 3) Embedding
         with embed_ph.container():
@@ -181,7 +285,7 @@ def _run_pipeline_direct(
 
                         return SentenceTransformer(name, device=device_str)
                     except Exception as e:
-                        raise RuntimeError("sentence-transformers required") from e
+                        raise RuntimeError(f"sentence-transformers failed to import: {e}") from e
 
                 model = get_model(model_name, device)
 
@@ -244,7 +348,39 @@ def _run_pipeline_direct(
             progress = st.progress(0)
             store = EdgeStore(db_path)
             store.init_db()
-            gen = compute_candidate_edges_stream(aggregated, embeddings=embeddings, collection=collection, top_k=int(top_k), threshold=float(threshold), batch_size=128, alpha=float(alpha))
+            # Ensure retriever knows which id columns to consider (include `template_id` from parser)
+            id_column_candidates = ("template_id", "reqid", "template", "pid")
+            gen = compute_candidate_edges_stream(
+                aggregated, 
+                embeddings=embeddings, 
+                collection=collection, 
+                top_k=int(top_k), 
+                threshold=float(threshold), 
+                batch_size=128, 
+                alpha=float(alpha),
+                id_column_candidates=id_column_candidates
+            )
+            
+            if validate:
+                with st.spinner("Validating edges with Cross-Encoder..."):
+                    try:
+                        from src.validation import SemanticValidator
+                        # Cache the validator to avoid reloading model on every run
+                        @st.cache_resource
+                        def get_validator():
+                            return SemanticValidator()
+                        
+                        validator = get_validator()
+                        # Validation requires consuming the generator to batch process
+                        candidates = list(gen)
+                        _append_log(f"Validating {len(candidates)} candidate edges...")
+                        validated = validator.validate_edges(candidates)
+                        gen = iter(validated)
+                        _append_log("Validation complete.")
+                    except Exception as e:
+                        _append_log(f"Validation failed: {e}")
+                        st.warning(f"Validation failed: {e}. Proceeding with unvalidated edges.")
+
             batch = []
             processed_sources = set()
             written = 0
@@ -306,69 +442,172 @@ def _run_pipeline_direct(
     return True
 
 
-if st.button("Run MicroVision"):
+# Visualization settings
+# (Moved to Dependency Graph tab)
+
+
+
+def render_graph(edges_list, height=600):
+    """Render the PyVis graph component."""
+    G = edges_to_networkx(edges_list)
+    if G is not None:
+        tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
+        tmp.close()
+        try:
+            out = write_pyvis_html(G, tmp.name)
+            html = Path(tmp.name).read_text(encoding="utf-8")
+            # Diagnostic: show generated HTML header comment
+            if "<!-- graph-renderer:" in html:
+                hdr = html.split("<!-- graph-renderer:", 1)[1].split("-->", 1)[0]
+                # st.text(f"HTML banner:{hdr.strip()}") # Optional debug
+            components.html(html, height=height)
+        except Exception as e:
+            st.error(
+                "Could not render visualization with pyvis: %s. "
+                "Install optional deps in the venv: `pip install pyvis jinja2`" % e
+            )
+
+def render_inspector(edges_list):
+    """Render the Edge Inspector dataframe and reasoning."""
+    st.write(f"Loaded {len(edges_list)} edges from DB")
+    
+    if len(edges_list) > 0:
+        # Convert to DataFrame for easier viewing
+        df_display = pd.DataFrame(edges_list)
+        
+        # Select relevant columns if they exist
+        cols = ["source", "target", "hybrid_score", "time_delta_ms", "source_semantic_text", "target_semantic_text"]
+        
+        available_cols = [c for c in cols if c in df_display.columns]
+        if not available_cols:
+            # Fallback for aggregated view
+            available_cols = [c for c in ["source", "target", "weight", "hybrid_score", "title"] if c in df_display.columns]
+        
+        st.dataframe(df_display[available_cols], use_container_width=True)
+        
+        # If we have raw text (template level), show a few examples of reasoning
+        if "source_semantic_text" in df_display.columns:
+            st.markdown("### Sample Reasoning (Top 5 Edges)")
+            for i, row in df_display.head(5).iterrows():
+                with st.expander(f"{row.get('source', '?')} -> {row.get('target', '?')} (Score: {row.get('hybrid_score', 0):.2f})"):
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.markdown("**Source Template:**")
+                        st.info(row.get("source_semantic_text", "N/A"))
+                    with col_b:
+                        st.markdown("**Target Template:**")
+                        st.success(row.get("target_semantic_text", "N/A"))
+                    st.caption(f"Time Delta: {row.get('time_delta_ms', 'N/A')} ms")
+
+
+# Initialize session state for graph persistence
+if "show_graph" not in st.session_state:
+    st.session_state.show_graph = False
+
+if st.button("Run MicroVision", type="primary"):
     st.info("Starting full pipeline (direct mode). Logs will appear in 'Show pipeline logs'.")
-    ok = _run_pipeline_direct(source=source, sample=int(sample), db_path=db_path, chroma_dir=chroma_dir, top_k=int(top_k), threshold=float(threshold), alpha=float(alpha), device=device if device else None)
+    ok = _run_pipeline_direct(
+        source=source, 
+        sample=int(sample), 
+        db_path=db_path, 
+        chroma_dir=chroma_dir, 
+        top_k=int(top_k), 
+        threshold=float(threshold), 
+        alpha=float(alpha), 
+        device=device if device else None,
+        validate=validate,
+        resume=resume
+    )
+    
     if ok:
-        # On success, prompt user to view results in the Graph Visualizer and
-        # provide a quick action that pre-fills the visualization controls.
-        st.success("Full pipeline run completed (see logs above for details).")
-        # Previously we offered a quick "Open Graph Visualizer" jump here.
-        # That shortcut has been removed to simplify the UI and avoid
-        # unexpected auto-generation in the user's session.
+        st.success("Full pipeline run completed.")
+        st.session_state.show_graph = True
     else:
         st.error("Pipeline failed — see logs above for details.")
 
-
 st.markdown("---")
+tab_graph, tab_inspector, tab_eval = st.tabs(["Dependency Graph", "Edge Inspector", "Evaluation"])
 
-st.subheader("Graph Visualizer")
+# Shared Data Holder
+edges_list = []
 
-# Visualization controls
-viz_db_path = st.text_input("Edges DB for visualization", value=db_path, key="viz_db")
-limit = st.number_input("Max edges to load", value=1000, min_value=10, step=10, key="viz_limit")
-
-if st.button("Generate visualization"):
-    p = Path(viz_db_path)
-    if not p.exists():
-        st.error(f"Edges DB not found: {viz_db_path}")
-    else:
-        st.info("Loading edges and building graph...")
+with tab_graph:
+    st.subheader("Visualization Settings")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        limit = st.number_input("Max edges", value=1000, min_value=10, step=10, key="viz_limit")
+    with c2:
+        viz_threshold = st.number_input("Min Score", value=0.3, min_value=0.0, max_value=1.0, step=0.05, key="viz_threshold")
+    with c3:
+        viz_level = st.selectbox("Level", ["service", "template"], index=0, key="viz_level")
+    with c4:
+        graph_height = st.number_input("Height (px)", value=600, min_value=400, max_value=1200, step=50, key="viz_height")
+    
+    if Path(db_path).exists():
+        if st.button("Refresh Graph"):
+            st.session_state.show_graph = True
+    
+    if st.session_state.show_graph and Path(db_path).exists():
         try:
-            edges = load_edges_from_db(str(p), limit=int(limit))
-            # Diagnostic: show counts and sample edges before building graph
-            edges_list = list(edges)
-            st.write(f"Loaded {len(edges_list)} edges from DB")
-            if len(edges_list) > 0:
-                # show first few edges to help debug (trim long values)
-                sample_edges = edges_list[:10]
-                st.json(sample_edges)
-
-            G = edges_to_networkx(edges_list)
+            with st.spinner("Rendering graph..."):
+                edges = load_edges_from_db(str(db_path), limit=int(limit), threshold=float(viz_threshold), level=viz_level)
+                edges_list = list(edges)
+                render_graph(edges_list, height=graph_height)
         except Exception as e:
-            st.error(f"Failed loading edges or building graph: {e}")
-            G = None
+            st.error(f"Failed loading edges: {e}")
+    elif not Path(db_path).exists():
+        st.info("Run the pipeline to generate the graph.")
 
-        if G is not None:
-            tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
-            tmp.close()
-            try:
-                out = write_pyvis_html(G, tmp.name)
-                html = Path(tmp.name).read_text(encoding="utf-8")
-                # Diagnostic: show generated HTML header comment and a short snippet
-                if "<!-- graph-renderer:" in html:
-                    hdr = html.split("<!-- graph-renderer:", 1)[1].split("-->", 1)[0]
-                    st.text(f"HTML banner:{hdr.strip()}")
-                st.text(f"Generated HTML size: {len(html)} bytes")
-                components.html(html, height=800)
-            except Exception as e:
-                # Common pyvis failures stem from missing optional deps (jinja2)
-                st.error(
-                    "Could not render visualization with pyvis: %s. "
-                    "Install optional deps in the venv: `pip install pyvis jinja2` "
-                    "or view the raw edges in the Logs/DB." % e
-                )
+with tab_inspector:
+    if st.session_state.show_graph and edges_list:
+        render_inspector(edges_list)
+    elif st.session_state.show_graph and not edges_list and Path(db_path).exists():
+         st.warning("No edges found matching the current criteria.")
+    else:
+        st.info("No edges loaded. Run pipeline or refresh graph.")
 
-# Note: the previous auto-generate-on-jump logic has been removed since
-# the quick-jump button is no longer provided. Visualization is generated
-# only when the user explicitly clicks "Generate visualization".
+with tab_eval:
+    st.subheader("Evaluation (Ground Truth vs Inferred)")
+    if st.button("Run Evaluation"):
+        st.info("Running evaluation...")
+        try:
+            # Use the same parsed logs path as the pipeline uses
+            parsed_logs_path = Path("data/parsed_sample.csv")
+            if not parsed_logs_path.exists():
+                 st.error(f"Parsed logs not found at {parsed_logs_path}. Run the pipeline first.")
+            else:
+                 # 1. Generate Ground Truth
+                 df = load_parsed_logs(parsed_logs_path)
+                 ground_truth = generate_ground_truth(df)
+                 
+                 if not ground_truth:
+                     st.warning("No ground truth edges found in the current sample (requires multiple services in same reqid trace).")
+                 else:
+                     st.write(f"**Ground Truth Edges:** {len(ground_truth)}")
+                     
+                     # 2. Load Inferred Edges
+                     # Use the visualization threshold to filter inferred edges
+                     inferred = load_inferred_edges(Path(db_path), threshold=float(viz_threshold))
+                     st.write(f"**Inferred Edges** (threshold={viz_threshold}): {len(inferred)}")
+                     
+                     # 3. Calculate Metrics
+                     metrics = calculate_metrics(ground_truth, inferred)
+                     
+                     c1, c2, c3 = st.columns(3)
+                     c1.metric("Precision", f"{metrics['precision']:.4f}")
+                     c2.metric("Recall", f"{metrics['recall']:.4f}")
+                     c3.metric("F1 Score", f"{metrics['f1']:.4f}")
+                     
+                     with st.expander("Detailed Metrics"):
+                         st.write(f"Correct Matches (TP): {metrics['tp']}")
+                         st.write(f"False Positives (FP): {metrics['fp']}")
+                         st.write(f"Missed Edges (FN): {metrics['fn']}")
+                         
+                         if metrics['fn'] > 0:
+                             st.markdown("#### Top Missed Edges (False Negatives)")
+                             missed = list(ground_truth - inferred)[:10]
+                             for src, dst in missed:
+                                 st.text(f"{src} -> {dst}")
+
+        except Exception as e:
+            st.error(f"Evaluation failed: {e}")

@@ -9,6 +9,7 @@ import math
 import numpy as np
 import logging
 from config.settings import settings
+from src.utils.time_utils import get_canonical_timestamp, to_iso_string
 
 try:
     # chromadb is optional for unit tests that don't touch vector DBs
@@ -118,75 +119,7 @@ def compute_candidate_edges_stream(
     id_to_index = None
     if id_col is not None:
         id_to_index = {str(v): int(i) for i, v in enumerate(df[id_col].values)}
-
     logger = logging.getLogger(__name__)
-
-    def _canonical_timestamp_from_value(val) -> Optional[Any]:
-        """Coerce metadata/df timestamp-like value into a pandas.Timestamp (UTC) or None.
-
-        Handles single strings, comma-separated strings, lists/tuples/ndarrays, and pandas Index/Series.
-        Uses `settings.DEFAULT_TIMESTAMP_POLICY` when choosing a canonical value from multiple timestamps.
-        """
-        if pd is None:
-            return None
-        if val is None:
-            return None
-        seq = None
-        try:
-            if isinstance(val, (list, tuple)):
-                seq = list(val)
-            elif isinstance(val, (pd.Index, pd.Series)):
-                seq = list(val)
-            elif isinstance(val, str) and "," in val:
-                seq = [s.strip() for s in val.split(",") if s.strip()]
-        except Exception:
-            seq = None
-
-        if seq is None:
-            try:
-                ts = pd.to_datetime(val, utc=True, errors="coerce")
-                if pd.isna(ts):
-                    return None
-                return ts
-            except Exception:
-                return None
-
-        parsed = []
-        for element in seq:
-            try:
-                ts2 = pd.to_datetime(element, utc=True, errors="coerce")
-                if pd.isna(ts2):
-                    continue
-                parsed.append(ts2)
-            except Exception:
-                continue
-
-        if not parsed:
-            return None
-
-        parsed_sorted = sorted(parsed)
-        policy = getattr(settings, "DEFAULT_TIMESTAMP_POLICY", "median")
-        if policy == "latest":
-            return parsed_sorted[-1]
-        if policy == "earliest":
-            return parsed_sorted[0]
-        if policy == "first":
-            for element in seq:
-                try:
-                    ts_try = pd.to_datetime(element, utc=True, errors="coerce")
-                    if not pd.isna(ts_try):
-                        return ts_try
-                except Exception:
-                    continue
-            return parsed_sorted[0]
-        # median default
-        m = len(parsed_sorted)
-        if m % 2 == 1:
-            return parsed_sorted[m // 2]
-        t0 = parsed_sorted[m // 2 - 1].value
-        t1 = parsed_sorted[m // 2].value
-        mid = (int(t0) + int(t1)) // 2
-        return pd.to_datetime(mid, unit="ns", utc=True)
 
     if collection is not None:
         if embeddings is None:
@@ -263,10 +196,10 @@ def compute_candidate_edges_stream(
                 target_timestamp_canonical = None
                 try:
                     if source_timestamp is not None:
-                        stc = _canonical_timestamp_from_value(source_timestamp)
+                        stc = get_canonical_timestamp(source_timestamp)
                         source_timestamp_canonical = None if stc is None else stc.strftime("%Y-%m-%dT%H:%M:%SZ")
                     if target_timestamp is not None:
-                        ttc = _canonical_timestamp_from_value(target_timestamp)
+                        ttc = get_canonical_timestamp(target_timestamp)
                         target_timestamp_canonical = None if ttc is None else ttc.strftime("%Y-%m-%dT%H:%M:%SZ")
                     if source_timestamp_canonical is not None and target_timestamp_canonical is not None:
                         import pandas as _pd
@@ -328,47 +261,62 @@ def compute_candidate_edges_stream(
                         "hybrid_score": hybrid,
                         "alpha": float(alpha),
                         "target_semantic_text": (meta.get("semantic_text") if isinstance(meta, dict) else None),
+                        "source_semantic_text": (df.iloc[src_idx]["semantic_text"] if "semantic_text" in df.columns else None),
                     }
 
         return
 
+    # Fallback: local all-pairs comparison if no collection provided
     if embeddings is None:
-        raise ValueError("Either collection or embeddings must be provided")
-
+         raise ValueError("embeddings array required for local comparison")
+    
     emb = np.asarray(embeddings)
-
+    # normalize for cosine similarity
+    norms = np.linalg.norm(emb, axis=1, keepdims=True)
+    norms[norms == 0] = 1e-10
+    emb_norm = emb / norms
+    
     for start, end in _batch_indices(n, batch_size):
-        batch = emb[start:end]
-        norms = np.linalg.norm(emb, axis=1)
-        batch_norms = np.linalg.norm(batch, axis=1)
-        denom = np.outer(batch_norms, norms)
-        sims = np.dot(batch, emb.T)
-        with np.errstate(invalid="ignore", divide="ignore"):
-            sims = np.divide(sims, denom, where=denom != 0)
-            sims[denom == 0] = 0.0
-
-        for i_local in range(sims.shape[0]):
+        batch = emb_norm[start:end]
+        sims = np.dot(batch, emb_norm.T)
+        
+        for i_local in range(len(batch)):
             src_idx = start + i_local
             row = sims[i_local]
             candidate_idxs = np.where(row >= threshold)[0]
+            
             for tgt_idx in candidate_idxs:
                 if tgt_idx == src_idx:
                     continue
+                
                 retrieval_similarity = float(row[tgt_idx])
                 retrieval_distance = max(0.0, 1.0 - retrieval_similarity)
-                hybrid = float(alpha * retrieval_similarity + (1.0 - alpha) * retrieval_similarity)
+                # For local embeddings, retrieval_similarity IS the semantic cosine
+                semantic_cosine = retrieval_similarity
+                hybrid = float(semantic_cosine)
+
                 source_timestamp = None
                 target_timestamp = None
                 time_delta_ms = None
+                
                 if ts_col is not None:
                     try:
                         source_timestamp = df.iloc[src_idx][ts_col]
+                        target_timestamp = df.iloc[tgt_idx][ts_col]
                     except Exception:
-                        source_timestamp = None
+                        pass
+                
+                # Compute time delta if possible
+                try:
+                    stc = get_canonical_timestamp(source_timestamp)
+                    ttc = get_canonical_timestamp(target_timestamp)
+                    if stc is not None and ttc is not None:
+                        time_delta_ms = float((ttc - stc).total_seconds() * 1000.0)
+                except Exception:
+                    time_delta_ms = None
 
-                # When running purely on embeddings (no collection), prefer
-                # writing the canonical id value from the dataframe if present.
                 tgt_id_val = df.iloc[tgt_idx][id_col] if (id_col is not None) else int(tgt_idx)
+                
                 yield {
                     "source_index": int(src_idx),
                     "source_id": None if id_col is None else df.iloc[src_idx][id_col],
@@ -376,14 +324,17 @@ def compute_candidate_edges_stream(
                     "target_metadata": None,
                     "source_timestamp": source_timestamp,
                     "target_timestamp": target_timestamp,
+                    "source_timestamp_canonical": to_iso_string(get_canonical_timestamp(source_timestamp)),
+                    "target_timestamp_canonical": to_iso_string(get_canonical_timestamp(target_timestamp)),
                     "time_delta_ms": time_delta_ms,
                     "retrieval_distance": retrieval_distance,
                     "retrieval_similarity": retrieval_similarity,
-                    "semantic_cosine": float(row[tgt_idx]),
+                    "semantic_cosine": semantic_cosine,
                     "hybrid_score": hybrid,
                     "alpha": float(alpha),
+                    "target_semantic_text": (df.iloc[tgt_idx]["semantic_text"] if "semantic_text" in df.columns else None),
+                    "source_semantic_text": (df.iloc[src_idx]["semantic_text"] if "semantic_text" in df.columns else None),
                 }
-                # print(f"Yielded edge from {src_idx} to {tgt_idx} with hybrid {hybrid}")
 
 
 __all__ = ["batch_query_chroma", "compute_candidate_edges_stream"]

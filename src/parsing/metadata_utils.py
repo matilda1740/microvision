@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+from src.parsing.regex_utils import normalize_service_from_component, extract_fields
+
 # Default field configuration used when none supplied
 FIELD_CONFIG = {
     "core_fields": ["Component", "Level", "Method", "URL"],
@@ -40,22 +42,19 @@ FIELD_CONFIG = {
     ],
 }
 
-# Cached regexes for extracting common fields from free-text content
-EXTRA_FIELD_PATTERNS = {
-    # date and time fragments commonly found in log lines (ISO-like)
-    # these are captured separately so the timestamp reconstructor can combine them
-    "Date": re.compile(r"(\d{4}-\d{2}-\d{2})", re.IGNORECASE),
-    "Time": re.compile(r"(\d{2}:\d{2}:\d{2}(?:\.\d+)?)", re.IGNORECASE),
-    "ReqID": re.compile(r"\[req-([\w-]+)\b", re.IGNORECASE),
-    "UserID": re.compile(r"(?:user[-_]?id)\s*[:=]\s*([\w-]+)", re.IGNORECASE),
-    "TenantID": re.compile(r"(?:tenant[-_]?id)\s*[:=]\s*([\w-]+)", re.IGNORECASE),
-    "IP": re.compile(r"\b(\d{1,3}(?:\.\d{1,3}){3})\b", re.IGNORECASE),
-    "Status": re.compile(r"(?:status)\s*[:=]\s*(\d{3})", re.IGNORECASE),
-    "Method": re.compile(r"\b(GET|POST|PUT|DELETE|PATCH|OPTIONS)\b", re.IGNORECASE),
-    "URL": re.compile(r"(https?://[^\s]+|/[\w./-]+)", re.IGNORECASE),
-    "ResponseLength": re.compile(r"len[:=]\s*(\d+)", re.IGNORECASE),
-    "ResponseTime": re.compile(r"time[:=]\s*([\d\.]+)", re.IGNORECASE),
-}
+
+def is_numeric_like(x: Any) -> bool:
+    """Check if a value looks like a number (float or int)."""
+    try:
+        if x is None:
+            return False
+        # handle lists/arrays conservatively
+        if isinstance(x, (list, tuple)):
+            return False
+        float(str(x))
+        return True
+    except Exception:
+        return False
 
 
 def extract_and_build_metadata(
@@ -68,16 +67,10 @@ def extract_and_build_metadata(
 
     Returns a dict with lower-cased keys only (e.g. 'service', 'reqid', 'ip').
     """
-    meta: Dict[str, Any] = {}
-
     # 1) regex-based extraction (lowercase keys)
-    for field, pattern in EXTRA_FIELD_PATTERNS.items():
-        try:
-            match = pattern.search(content)
-        except Exception:
-            match = None
-        if match:
-            meta[field.lower()] = match.group(1).strip()
+    meta = extract_fields(content)
+    # filter out None values
+    meta = {k: v for k, v in meta.items() if v is not None}
 
     # 2) merge base_row metadata if provided (prefer extracted values)
     if base_row is not None and metadata_fields:
@@ -106,26 +99,23 @@ def extract_and_build_metadata(
     time_str = meta.get("time") or _get_base("Time")
     date_str = str(date_str).strip()
     time_str = str(time_str).strip()
+
     if date_str and time_str:
-        # Be flexible with time formats: try a forgiving parse first so we accept
-        # timestamps with or without fractional seconds. Normalize to UTC ISO string.
-        ts = pd.to_datetime(f"{date_str} {time_str}", errors="coerce", utc=True)
-        if pd.notna(ts):
-            try:
-                meta["timestamp"] = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
-            except Exception:
+        try:
+            ts = pd.to_datetime(f"{date_str} {time_str}", errors="coerce")
+            if pd.notna(ts):
                 meta["timestamp"] = str(ts.isoformat())
-        else:
+            else:
+                meta["timestamp"] = None
+        except Exception:
             meta["timestamp"] = None
     else:
         meta["timestamp"] = None
 
     # 4) service shortname from component
     if "service" not in meta and component:
-        depth = 2
-        parts = component.split('.') if isinstance(component, str) else []
-        selected = parts[: min(depth, len(parts))]
-        service = ".".join(selected) if selected else component
-        meta["service"] = str(service).replace('_', '-')
+        service = normalize_service_from_component(component)
+        if service:
+            meta["service"] = service
 
     return meta

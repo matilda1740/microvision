@@ -58,6 +58,8 @@ class Settings:
         "doc_id",
         "orig_idx",
         "timestamp",
+        "service",
+        "level",
     ]
     DEFAULT_ALPHA = 0.5
     DEFAULT_DEVICE = None

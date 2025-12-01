@@ -18,8 +18,6 @@ import csv
 import json
 import os
 import random
-import re
-import shutil
 import time
 import datetime
 from pathlib import Path
@@ -29,217 +27,47 @@ import numpy as np
 import pandas as pd
 # ensure project root on path (so `from src...` imports work when running the script)
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src.parsing.metadata_drain_parser import MetadataDrainParser
 from src.encode_chroma.encode_utils import df_to_metadatas
 from src.enrichment.merger import merge_structured_metadata, MergeError
-from src.retrieval.retriever import compute_candidate_edges_stream
-from src.storage.edge_store import EdgeStore
+from src.retrieval import compute_candidate_edges_stream
+from src.storage import EdgeStore
 from config.settings import settings
+from src.parsing.regex_utils import extract_service_from_path
+from src.pipeline.stages import (
+    sample_source,
+    parse_sample_rows,
+    load_parsed_df,
+    preprocess_and_merge,
+    build_metadatas_from_aggregated,
+    compute_embeddings_for_use_df,
+    ingest_embeddings_atomic,
+    compute_and_persist_edges,
+    adjust_top_k,
+    validate_sample_df,
+    reservoir_sample_csv,
+)
 
 
 ## Refactored stage functions -------------------------------------------------
-
-
-def sample_source(src: Path, sample_size: int, seed: int = 42) -> list[dict]:
-    """Sample lines/rows from a source CSV or text file. Returns list of rows (dict).
-
-    This is thin wrapper around reservoir_sample_csv kept for backwards
-    compatibility with the original script behaviour.
-    """
-    return reservoir_sample_csv(src, sample_size, seed)
-
-
-def parse_sample_rows(sampled: list[dict], parsed_path: Path, templates_path: Path, log_format: object | None = None, save_every: int = 250) -> None:
-    """Run MetadataDrainParser over sampled rows and write parsed CSVs.
-
-    Side-effects: writes parsed_path and templates_path.
-    """
-    parser = MetadataDrainParser(log_format=log_format, structured_csv=str(parsed_path), templates_csv=str(templates_path), save_every=save_every, mode="fresh")
-    for i in range(len(sampled)):
-        row = sampled[i]
-        raw_line = row.get("raw") or row.get("content") or " ".join([str(v) for v in row.values()])
-        parser.process_line(raw_line, i + 1)
-    parser.finalize()
-
-
-def load_parsed_df(parsed_path: Path) -> pd.DataFrame:
-    return pd.read_csv(parsed_path)
-
-
-def preprocess_and_merge(parsed_df: pd.DataFrame, save_cleaned: Path, merged_out: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Run cleaning and merge with structured metadata. Returns (cleaned, aggregated).
-    Also writes cleaned and merged CSVs to disk.
-    """
-    cleaned = minimal_cleaning(parsed_df)
-    save_cleaned.parent.mkdir(parents=True, exist_ok=True)
-    cleaned.to_csv(save_cleaned, index=False)
-    aggregated = merge_structured_metadata(cleaned, parsed_df, str(merged_out))
-    return cleaned, aggregated
-
-
-def build_metadatas_from_aggregated(aggregated: pd.DataFrame) -> list[dict]:
-    use_df = aggregated.copy()
-    if "semantic_text" not in use_df.columns:
-        use_df["semantic_text"] = use_df.get("template_ids").apply(lambda lst: ", ".join(lst) if isinstance(lst, list) else "")
-    metas = df_to_metadatas(use_df)
-    # sanitize to avoid empty metadata dicts
-    metas_sanitized = []
-
-    def _is_nonempty(v):
-        if v is None:
-            return False
-        if isinstance(v, (str, bytes)):
-            return v != ""
-        if isinstance(v, (list, tuple, dict, set)):
-            return len(v) > 0
-        try:
-            import numpy as _np
-
-            if isinstance(v, _np.ndarray):
-                return v.size > 0
-        except Exception:
-            pass
-        return True
-
-    for i, m in enumerate(metas):
-        if not isinstance(m, dict):
-            m2 = {"idx": i}
-        else:
-            m2 = {k: v for k, v in m.items() if _is_nonempty(v)}
-        if not m2:
-            txt = use_df["semantic_text"].iloc[i] if ("semantic_text" in use_df.columns and i < len(use_df)) else None
-            m2 = {"semantic_text": str(txt) if txt is not None else f"row_{i}"}
-        metas_sanitized.append(m2)
-    return metas_sanitized
-
-
-def compute_embeddings_for_use_df(use_df: pd.DataFrame, model_name: str | None, device: str | None, output_dir: str | None = None) -> tuple[list[list[float]], pd.DataFrame, list[str]]:
-    """Compute embeddings using centralized helper and return (embeddings, index_df, documents).
-    The helper mirrors the previous in-script call: it returns embeddings, index_df and a model object (ignored).
-    """
-    from src.encode_chroma.encoder import encode_templates
-
-    out_dir = output_dir or getattr(settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
-    embeddings, index_df, _ = encode_templates(use_df, model=None, model_name=model_name, device=device, output_dir=out_dir, chroma_dir=None)
-    documents = use_df["semantic_text"].fillna("").astype(str).tolist()
-    return embeddings, index_df, documents
-
-
-def ingest_embeddings_atomic(chroma_dir: Path, ids: list[str], metas: list[dict], documents: list[str], embeddings: list[list[float]]):
-    """Call the central atomic ingest helper and return (client, collection).
-    """
-    from src.encode_chroma import chroma as _chroma_mod
-    from src.encode_chroma.chroma import ingest_to_chroma_atomic
-
-    # Detect whether a cached client existed prior to this call so callers
-    # (e.g. UI) can display a helpful message.
-    pre_cached = str(chroma_dir) in getattr(_chroma_mod, '_CHROMA_CLIENT_CACHE', {})
-    client, collection = ingest_to_chroma_atomic(chroma_dir, ids, metas, documents, embeddings)
-    reused = bool(pre_cached and client is not None)
-    return client, collection, reused
-
-
-def compute_and_persist_edges(use_df: pd.DataFrame, embeddings: list[list[float]], collection, db_path: str, top_k: int, threshold: float, alpha: float, clear_db: bool = False) -> int:
-    # Ensure retriever knows which id columns to consider (include `template_id` from parser)
-    id_column_candidates = ("template_id", "reqid", "template", "pid")
-    gen = compute_candidate_edges_stream(
-        use_df,
-        embeddings=embeddings,
-        collection=collection,
-        top_k=top_k,
-        threshold=threshold,
-        batch_size=128,
-        alpha=alpha,
-        id_column_candidates=id_column_candidates,
-    )
-    store = EdgeStore(db_path)
-    store.init_db()
-    try:
-        if clear_db:
-            store.clear_edges(reset_sequence=True)
-        written = store.write_edges(gen, batch_size=500)
-    finally:
-        store.close()
-    return written
-
-
-
-def adjust_top_k(N: int, requested_top_k: int, max_total_edges: int | None = None, per_source_top_k_cap: int | None = None) -> int:
-    """Return adjusted top_k using settings or passed thresholds.
-
-    This encapsulates the guard logic and is unit-testable.
-    """
-    if max_total_edges is None:
-        max_total_edges = getattr(settings, "MAX_TOTAL_EDGES", 200000)
-    if per_source_top_k_cap is None:
-        per_source_top_k_cap = getattr(settings, "PER_SOURCE_TOP_K_CAP", 100)
-
-    est = N * int(requested_top_k)
-    if est > max_total_edges:
-        new_top_k = max(1, max_total_edges // max(1, N))
-        new_top_k = min(new_top_k, per_source_top_k_cap)
-        return new_top_k
-    return int(requested_top_k)
-
-
-def validate_sample_df(df: pd.DataFrame) -> None:
-    """Simple input validation for the sampled dataframe.
-
-    Raises ValueError with actionable guidance when checks fail.
-    """
-    if df is None or len(df) == 0:
-        raise ValueError("Sampled dataframe is empty. Check source path and sample size.")
-    # require at least one of 'raw' or 'content' columns
-    if not ("raw" in df.columns or "content" in df.columns):
-        raise ValueError("Sampled dataframe must contain either 'raw' or 'content' columns for parsing.\nSuggestion: run the notebook parser to produce these columns.")
-
-
-def reservoir_sample_csv(path: Path, sample_size: int, seed: int = 42) -> List[Dict[str, Any]]:
-    rng = random.Random(seed)
-    sample: List[Dict[str, Any]] = []
-    with path.open("r", encoding="utf-8", errors="ignore") as fh:
-        # Try to detect whether file has a CSV header. If not, treat each
-        # line as a raw log message and sample accordingly.
-        try:
-            start = fh.read(8192)
-            fh.seek(0)
-            has_header = csv.Sniffer().has_header(start)
-        except Exception:
-            has_header = False
-
-        if has_header:
-            reader = csv.DictReader(fh)
-            for i, row in enumerate(reader):
-                if i < sample_size:
-                    sample.append(row)
-                else:
-                    j = rng.randint(0, i)
-                    if j < sample_size:
-                        sample[j] = row
-        else:
-            # treat each physical line as a single-column 'raw' value
-            for i, line in enumerate(fh):
-                row = {"raw": line.rstrip("\n")}
-                if i < sample_size:
-                    sample.append(row)
-                else:
-                    j = rng.randint(0, i)
-                    if j < sample_size:
-                           sample[j] = row
-
-    return sample
+# Moved to src/pipeline/stages.py
 
 
 from src.enrichment.cleaning import minimal_cleaning
 from src.encode_chroma.chroma import ingest_to_chroma_atomic
 
 
+
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--source", required=True)
     p.add_argument("--sample", type=int, default=getattr(settings, "DEFAULT_SAMPLE", 1000))
+    p.add_argument("--contiguous", action="store_true", help="If set, take the first N rows/lines (preserve temporal order) instead of random sampling")
     p.add_argument("--db", default=getattr(settings, "DEFAULT_DB", "data/edges/edges_smoke.db"))
     p.add_argument("--chroma-dir", default=getattr(settings, "DEFAULT_CHROMA_DIR", "data/chroma_db/chroma_smoke"))
     p.add_argument("--top-k", type=int, default=getattr(settings, "DEFAULT_TOP_K", 10))
@@ -255,6 +83,9 @@ def main():
     p.add_argument("--per-source-top-k-cap", type=int, default=None, help="Override PER_SOURCE_TOP_K_CAP from config")
     p.add_argument("--inspect", action="store_true", help="Print the `use_df` sample and pause before continuing")
     p.add_argument("--inspect-format", choices=["table", "plain", "json"], default="table", help="Format to display the `use_df` sample when --inspect is used")
+    p.add_argument("--validate", action="store_true", help="Enable Cross-Encoder validation step")
+    p.add_argument("--batch-size", type=int, default=128, help="Batch size for embedding generation")
+    p.add_argument("--num-workers", type=int, default=1, help="Number of worker processes for parallel embedding (CPU only)")
     args = p.parse_args()
 
     # configure logging early so modules can emit debug traces
@@ -281,9 +112,9 @@ def main():
         "events": [],
     }
 
-    print(f"Sampling {args.sample} rows from {src} ...")
+    print(f"Sampling {args.sample} rows from {src} ... (contiguous={getattr(args, 'contiguous', False)})")
     t0 = time.time()
-    sampled = reservoir_sample_csv(src, args.sample)
+    sampled = reservoir_sample_csv(src, args.sample, contiguous=getattr(args, "contiguous", False))
     manifest["metrics"] = {"stages": {}}
     manifest["metrics"]["stages"]["sampling"] = {"duration_s": time.time() - t0, "rows": len(sampled)}
     raw_df = pd.DataFrame(sampled)
@@ -323,6 +154,19 @@ def main():
 
     # read parsed results back
     parsed_df = pd.read_csv(parsed_path)
+    
+    # Fix for OpenStack logs where 'service' might be misparsed as 'INFO'/'WARN'
+    # Extract service from the filename in 'raw' column: "nova-api.log.1..." -> "nova-api"
+    if 'raw' in parsed_df.columns:
+        # Regex to capture the part before .log
+        # Matches 'nova-api' in 'nova-api.log' or '/var/log/nova/nova-api.log'
+        # Also handles quoted strings like "nova-api.log..."
+        extracted_service = parsed_df['raw'].astype(str).str.extract(r'(?:^|/|")([a-z0-9_-]+)\.log')
+        
+        if not extracted_service.empty and extracted_service[0].notna().any():
+            print("Refining 'service' column by extracting from filename in 'raw'...")
+            parsed_df['service'] = extracted_service[0]
+            
     manifest["metrics"]["stages"]["parsing"] = {"duration_s": time.time() - t0, "rows": len(parsed_df)}
     print(f"Wrote parsed sample to {parsed_path}")
     manifest["events"].append({"ts": time.time(), "event": "parsed_sample_written", "path": str(parsed_path), "rows": len(parsed_df)})
@@ -429,6 +273,7 @@ def main():
 
     t0 = time.time()
     metas = df_to_metadatas(use_df)
+    
     manifest["events"].append({"ts": time.time(), "event": "metadatas_built", "rows": len(metas)})
     manifest["metrics"]["stages"]["metadatas"] = {"duration_s": time.time() - t0, "rows": len(metas)}
 
@@ -483,7 +328,7 @@ def main():
 
     # compute embeddings; do not ask the helper to ingest (chroma_dir=None)
     embeddings_out_dir = getattr(settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
-    embeddings, index_df, _ = encode_templates(use_df, model=None, model_name=model_name, device=device, output_dir=embeddings_out_dir, chroma_dir=None)
+    embeddings, index_df, _ = encode_templates(use_df, model=None, model_name=model_name, device=device, output_dir=embeddings_out_dir, chroma_dir=None, batch_size=args.batch_size, num_workers=args.num_workers)
     documents = use_df["semantic_text"].fillna("").astype(str).tolist()
     manifest["metrics"]["stages"]["embeddings"] = {"duration_s": time.time() - t0, "docs": len(documents)}
 
@@ -524,6 +369,30 @@ def main():
         id_column_candidates=id_column_candidates,
     )
 
+    # 7.5) Validation (Optional RAG Step)
+    if getattr(args, "validate", False):
+        print("Validation enabled: Re-ranking edges with Cross-Encoder...")
+        from src.validation import SemanticValidator
+        
+        # Initialize validator (this might download the model on first run)
+        validator = SemanticValidator()
+        
+        # We need to consume the generator to validate in batches
+        # Note: This breaks streaming for the validation step, but that's unavoidable for cross-encoding
+        candidates = list(gen)
+        print(f"Validating {len(candidates)} candidate edges...")
+        
+        # Validate
+        validated_edges = validator.validate_edges(candidates)
+        
+        # Filter if needed (e.g. score > 0 for MS MARCO)
+        # For now, we just pass them through with the new score, 
+        # but you could filter: [e for e in validated_edges if e['validation_score'] > 0]
+        
+        # Re-create generator
+        gen = (e for e in validated_edges)
+        manifest["events"].append({"ts": time.time(), "event": "validation_completed", "count": len(candidates)})
+
     # 8) Persist edges
     db_path = args.db
     store = EdgeStore(db_path)
@@ -539,8 +408,7 @@ def main():
     manifest["metrics"]["stages"]["edges_written"] = {"duration_s": time.time() - t0, "count": edges_written}
 
     # 9) Compute transitions
-    from src.persistence.transitions import compute_and_persist_transitions
-
+    from src.transitions import compute_and_persist_transitions
     t0 = time.time()
     transitions_written = compute_and_persist_transitions(db_path, min_count=1)
     print(f"Transitions written: {transitions_written}")

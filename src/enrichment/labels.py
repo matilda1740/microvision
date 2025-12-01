@@ -23,7 +23,7 @@ except Exception:
     _DISPLAY_MAP = {}
 
 
-_SEPARATORS_RE = re.compile(r"[\s\/:|\\]+|\.|_|-")
+_SEPARATORS_RE = re.compile(r"[\s\/:|\\]+|\.|_")
 
 
 def _normalize_token(tok: str) -> str:

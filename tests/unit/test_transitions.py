@@ -1,8 +1,8 @@
 import sqlite3
 import tempfile
 
-from src.storage.edge_store import EdgeStore
-from src.persistence.transitions import compute_and_persist_transitions
+from src.storage import EdgeStore
+from src.transitions import compute_and_persist_transitions
 
 
 def _make_sample_edges():

@@ -23,6 +23,9 @@ EXTRA_FIELD_PATTERNS: Dict[str, Pattern] = {
     "url": re.compile(r"(https?://[^\s]+|/[^\s,;]+)", re.IGNORECASE),
     "responselength": re.compile(r"len\s*[:=]\s*(\d+)", re.IGNORECASE),
     "responsetime": re.compile(r"time\s*[:=]\s*([0-9]+\.?[0-9]*)", re.IGNORECASE),
+    # Date and Time fragments for timestamp reconstruction
+    "date": re.compile(r"(\d{4}-\d{2}-\d{2})", re.IGNORECASE),
+    "time": re.compile(r"(\d{2}:\d{2}:\d{2}(?:\.\d+)?)", re.IGNORECASE),
 }
 
 
@@ -74,6 +77,37 @@ def normalize_service_from_component(component: Optional[str], depth: int = 2) -
     parts = [p for p in str(component).split(".") if p]
     depth = max(1, min(depth, len(parts)))
     return ".".join(parts[:depth]).replace("_", "-")
+
+
+def extract_service_from_path(path_str: str) -> Optional[str]:
+    """Extract service name from a file path or filename.
+
+    Matches patterns like:
+      - "nova-api.log" -> "nova-api"
+      - "/var/log/nova/nova-compute.log" -> "nova-compute"
+      - "neutron-server.log" -> "neutron-server"
+    
+    Handles quoted strings as well.
+
+    Args:
+        path_str: The file path or filename string.
+
+    Returns:
+        The extracted service name or None if no match found.
+    """
+    if not path_str:
+        return None
+    
+    # Regex to capture the part before .log
+    # Matches 'nova-api' in 'nova-api.log' or '/var/log/nova/nova-api.log'
+    # Also handles quoted strings like "nova-api.log..."
+    # (?:^|/|") : Start of string, forward slash, or quote
+    # ([a-z0-9_-]+) : Capture group for service name (alphanumeric, underscore, dash)
+    # \.log : Literal .log extension
+    match = re.search(r'(?:^|/|")([a-z0-9_-]+)\.log', str(path_str))
+    if match:
+        return match.group(1)
+    return None
 
 
 # Small helper for unit tests to validate pattern behavior on examples

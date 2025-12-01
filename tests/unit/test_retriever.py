@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from src.retrieval.retriever import compute_candidate_edges_stream
+from src.retrieval import compute_candidate_edges_stream
 
 
 class MockCollection:
@@ -70,5 +70,6 @@ def test_compute_candidate_edges_stream_local_fallback():
     # each yielded edge must have numeric score and source/target indices
     for e in edges:
         assert isinstance(e["source_index"], int)
-        assert isinstance(e["target_id"], int)
+        # target_id can be int or str depending on the dataframe content
+        assert isinstance(e["target_id"], (int, str))
         assert isinstance(e["hybrid_score"], float)

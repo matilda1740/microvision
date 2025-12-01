@@ -10,9 +10,9 @@ from __future__ import annotations
 from typing import Optional, Tuple
 import numpy as np
 
-from src.storage.edge_store import EdgeStore
-from src.retrieval.retriever import compute_candidate_edges_stream
-from src.persistence.transitions import compute_and_persist_transitions, export_transitions_to_csv
+from src.storage import EdgeStore
+from src.retrieval import compute_candidate_edges_stream
+from src.transitions import compute_and_persist_transitions, export_transitions_to_csv
 
 
 def run_pipeline_df(

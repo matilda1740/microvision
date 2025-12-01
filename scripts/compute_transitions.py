@@ -7,7 +7,7 @@ Example:
 from __future__ import annotations
 
 import argparse
-from src.persistence.transitions import compute_and_persist_transitions
+from src.transitions import compute_and_persist_transitions
 
 
 def main():

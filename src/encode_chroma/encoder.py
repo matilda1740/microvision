@@ -33,6 +33,7 @@ def encode_templates(
     chroma_dir: Optional[str] = None,
     force_recompute: bool = False,
     batch_size: Optional[int] = None,
+    num_workers: int = 1,
 ) -> Tuple[np.ndarray, pd.DataFrame, Optional[object]]:
     """Encode templates and optionally persist to Chroma.
 
@@ -43,6 +44,7 @@ def encode_templates(
       will be loaded lazily.
     - If `chroma_dir` is provided, the function will attempt to ingest the
       embeddings using the chroma helper and return the collection object.
+    - `num_workers`: if > 1, use sentence-transformers multi-process encoding (CPU only recommended).
     """
     if "semantic_text" not in input_df.columns:
         raise KeyError("input_df must contain a 'semantic_text' column")
@@ -93,16 +95,41 @@ def encode_templates(
 
     texts = input_df["semantic_text"].fillna("").astype(str).tolist()
 
-    # encode in batches to avoid memory spikes
-    embs = []
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i : i + batch_size]
-        emb = model.encode(batch, show_progress_bar=False, convert_to_numpy=True)
-        embs.append(emb)
-    if embs:
-        embeddings = np.vstack(embs)
+    # Parallel encoding if requested and supported
+    if num_workers > 1 and (device is None or device == "cpu"):
+        try:
+            print(f"Starting multi-process pool with {num_workers} workers...")
+            pool = model.start_multi_process_pool(target_devices=['cpu'] * num_workers)
+            try:
+                # encode_multi_process returns a numpy array if convert_to_numpy=True (default behavior varies, usually returns list of arrays)
+                # We'll force conversion after.
+                embs_list = model.encode_multi_process(texts, pool, batch_size=batch_size)
+                embeddings = np.vstack(embs_list)
+            finally:
+                model.stop_multi_process_pool(pool)
+        except Exception as e:
+            print(f"Multi-process encoding failed ({e}); falling back to single-process.")
+            # Fallback to single process loop
+            embs = []
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i : i + batch_size]
+                emb = model.encode(batch, show_progress_bar=False, convert_to_numpy=True)
+                embs.append(emb)
+            if embs:
+                embeddings = np.vstack(embs)
+            else:
+                embeddings = np.zeros((0, 0))
     else:
-        embeddings = np.zeros((0, 0))
+        # encode in batches to avoid memory spikes
+        embs = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            emb = model.encode(batch, show_progress_bar=False, convert_to_numpy=True)
+            embs.append(emb)
+        if embs:
+            embeddings = np.vstack(embs)
+        else:
+            embeddings = np.zeros((0, 0))
 
     # save cache atomically and write metadata
     try:

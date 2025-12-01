@@ -149,6 +149,71 @@ def write_pyvis_html(G, output_path: str, notebook: bool = False):
     for s, t, data in G.edges(data=True):
         net.add_edge(s, t, **{k: v for k, v in data.items() if k not in ("metadata",)})
 
+    # Configure physics to stabilize quickly and stop moving (jittering)
+    # minVelocity: 0.75 helps the simulation stop once nodes slow down.
+    # stabilization: pre-compute layout so it doesn't move on load.
+    # Improved physics for better readability and spacing:
+    # - Increased springLength (95 -> 200) to spread nodes out
+    # - Increased repulsion (-2000 -> -4000)
+    # - Added avoidOverlap to nodes
+    net.set_options("""
+    {
+      "nodes": {
+        "font": {
+            "size": 16,
+            "face": "tahoma",
+            "background": "white"
+        },
+        "shape": "dot",
+        "size": 20,
+        "shadow": true
+      },
+      "edges": {
+        "color": {
+            "inherit": true,
+            "opacity": 0.7
+        },
+        "smooth": {
+            "type": "continuous",
+            "forceDirection": "none"
+        },
+        "arrows": {
+            "to": {
+                "enabled": true,
+                "scaleFactor": 0.5
+            }
+        }
+      },
+      "physics": {
+        "enabled": true,
+        "stabilization": {
+          "enabled": true,
+          "iterations": 1000,
+          "updateInterval": 25,
+          "onlyDynamicEdges": false,
+          "fit": true
+        },
+        "minVelocity": 0.75,
+        "maxVelocity": 30,
+        "solver": "barnesHut",
+        "barnesHut": {
+            "gravitationalConstant": -4000,
+            "centralGravity": 0.3,
+            "springLength": 200,
+            "springConstant": 0.04,
+            "damping": 0.09,
+            "avoidOverlap": 0.2
+        },
+        "adaptiveTimestep": true
+      },
+      "interaction": {
+        "navigationButtons": true,
+        "keyboard": true,
+        "tooltipDelay": 200
+      }
+    }
+    """)
+
     # Try the pyvis writer first; if it fails (or generates problematic
     # relative script refs), fall back to a minimal vis-network HTML.
     try:
@@ -163,7 +228,7 @@ def write_pyvis_html(G, output_path: str, notebook: bool = False):
             marker = '<script src="lib/bindings/utils.js"></script>'
             inlined = False
             if marker in html_text:
-                repo_root = Path(__file__).resolve().parents[2]
+                repo_root = Path(__file__).resolve().parents[1]
                 local_utils = repo_root / "lib" / "bindings" / "utils.js"
                 if local_utils.exists():
                     utils_js = local_utils.read_text(encoding="utf-8")
@@ -308,7 +373,7 @@ def write_pyvis_html(G, output_path: str, notebook: bool = False):
         except Exception as e:
             raise RuntimeError("Failed to serialize graph for fallback visualization") from e
 
-        repo_root = Path(__file__).resolve().parents[2]
+        repo_root = Path(__file__).resolve().parents[1]
         vis_local = repo_root / "lib" / "vis-9.1.2" / "vis-network.min.js"
         if vis_local.exists():
             vis_js = vis_local.read_text(encoding="utf-8")
@@ -363,7 +428,21 @@ def write_pyvis_html(G, output_path: str, notebook: bool = False):
                             const edges = new vis.DataSet({edges_json});
                             const container = document.getElementById('mynetwork');
                             const data = {{ nodes: nodes, edges: edges }};
-                            const options = {{ physics: {{ stabilization: true }}, edges: {{ smooth: true }} }};
+                            const options = {{ 
+                                physics: {{ 
+                                    stabilization: {{ enabled: true, iterations: 2000 }}, 
+                                    minVelocity: 0.75,
+                                    maxVelocity: 30,
+                                    solver: "barnesHut",
+                                    barnesHut: {{
+                                        damping: 0.5,
+                                        gravitationalConstant: -2000,
+                                        springConstant: 0.04
+                                    }},
+                                    adaptiveTimestep: true
+                                }}, 
+                                edges: {{ smooth: true }} 
+                            }};
                             const network = new vis.Network(container, data, options);
                         </script>
                         </body>

@@ -120,7 +120,21 @@ def minimal_cleaning(cleaned_rows_df: pd.DataFrame) -> pd.DataFrame:
                 s = str(v).strip()
                 if s not in template_ids:
                     template_ids.append(s)
-        out_rows.append({"semantic_text": semantic_text, "template_ids": template_ids, "occurrences": len(g)})
+        
+        # Preserve service and component metadata
+        # We take the most frequent value (mode) or the first non-null
+        row_data = {"semantic_text": semantic_text, "template_ids": template_ids, "occurrences": len(g)}
+        
+        for col in ["service", "component"]:
+            if col in g.columns:
+                # Get most common value, ignoring NaNs
+                modes = g[col].dropna().mode()
+                if not modes.empty:
+                    row_data[col] = modes[0]
+                else:
+                    row_data[col] = None
+                    
+        out_rows.append(row_data)
 
     out_df = pd.DataFrame(out_rows)
     return out_df

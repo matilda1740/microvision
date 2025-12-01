@@ -1,8 +1,8 @@
 import sqlite3
 import tempfile
 
-from src.storage.edge_store import EdgeStore
-from src.persistence.transitions import compute_and_persist_transitions, export_transitions_to_csv
+from src.storage import EdgeStore
+from src.transitions import compute_and_persist_transitions, export_transitions_to_csv
 
 
 def test_export_transitions_roundtrip(tmp_path):

@@ -52,6 +52,7 @@ class EdgeStore:
                 source_timestamp_canonical TEXT,
                 target_timestamp_canonical TEXT,
                 target_semantic_text TEXT,
+                source_semantic_text TEXT,
                 created_at DATETIME DEFAULT (CURRENT_TIMESTAMP)
             )
             """
@@ -67,6 +68,8 @@ class EdgeStore:
                 cur.execute("ALTER TABLE edges ADD COLUMN target_timestamp_canonical TEXT")
             if "target_semantic_text" not in cols:
                 cur.execute("ALTER TABLE edges ADD COLUMN target_semantic_text TEXT")
+            if "source_semantic_text" not in cols:
+                cur.execute("ALTER TABLE edges ADD COLUMN source_semantic_text TEXT")
             if "target_component" not in cols:
                 cur.execute("ALTER TABLE edges ADD COLUMN target_component TEXT")
             if "target_service" not in cols:
@@ -87,58 +90,20 @@ class EdgeStore:
             self._merged_serv_map = {}
             if _pd and _pd.io.common.file_exists(mt_path):
                 _mt = _pd.read_csv(mt_path, dtype=str).fillna("")
-                # store as JSON list string when possible for canonical matching
-                for tid, comp, serv in zip(_mt.get("template_id", []), _mt.get("component", []), _mt.get("service", [])):
+                
+                # Handle missing columns gracefully
+                tids = _mt["template_id"] if "template_id" in _mt.columns else []
+                comps = _mt["component"] if "component" in _mt.columns else [None] * len(tids)
+                servs = _mt["service"] if "service" in _mt.columns else [None] * len(tids)
+
+                for tid, comp, serv in zip(tids, comps, servs):
                     t = str(tid)
-                    # normalize component: if looks like list repr, try to parse
-                    try:
-                        import ast as _ast
-
-                        parsed = _ast.literal_eval(comp) if isinstance(comp, str) and comp.strip().startswith("[") else None
-                        if isinstance(parsed, (list, tuple)):
-                            self._merged_comp_map[t] = json.dumps([str(x) for x in parsed], ensure_ascii=False)
-                        elif isinstance(comp, str) and "," in comp:
-                            parts = [p.strip() for p in comp.split(",") if p.strip()]
-                            self._merged_comp_map[t] = json.dumps(parts, ensure_ascii=False)
-                        elif isinstance(comp, str) and comp:
-                            self._merged_comp_map[t] = json.dumps([comp], ensure_ascii=False)
-                        else:
-                            self._merged_comp_map[t] = None
-                    except Exception:
-                        self._merged_comp_map[t] = json.dumps([str(comp)]) if comp is not None else None
-                    self._merged_serv_map[t] = str(serv) if serv is not None and serv != "" else None
-            # also attempt to read parsed_sample.csv to resolve source mappings (prefer this for source metadata)
-            try:
-                ps_path = "data/parsed_sample.csv"
-                self._parsed_comp_map = {}
-                self._parsed_serv_map = {}
-                if _pd and _pd.io.common.file_exists(ps_path):
-                    _ps = _pd.read_csv(ps_path, dtype=str).fillna("")
-                    for tid, comp, serv in zip(_ps.get("template_id", []), _ps.get("component", []), _ps.get("service", [])):
-                        t = str(tid)
-                        # parsed sample component is often scalar or list-like string; store as JSON list string
-                        try:
-                            import ast as _ast
-
-                            parsed = _ast.literal_eval(comp) if isinstance(comp, str) and comp.strip().startswith("[") else None
-                            if isinstance(parsed, (list, tuple)):
-                                self._parsed_comp_map[t] = json.dumps([str(x) for x in parsed], ensure_ascii=False)
-                            elif isinstance(comp, str) and "," in comp:
-                                parts = [p.strip() for p in comp.split(",") if p.strip()]
-                                self._parsed_comp_map[t] = json.dumps(parts, ensure_ascii=False)
-                            elif isinstance(comp, str) and comp:
-                                self._parsed_comp_map[t] = json.dumps([comp], ensure_ascii=False)
-                            else:
-                                self._parsed_comp_map[t] = None
-                        except Exception:
-                            self._parsed_comp_map[t] = json.dumps([str(comp)]) if comp is not None else None
-                        self._parsed_serv_map[t] = str(serv) if serv is not None and serv != "" else None
-                else:
-                    self._parsed_comp_map = {}
-                    self._parsed_serv_map = {}
-            except Exception:
-                self._parsed_comp_map = {}
-                self._parsed_serv_map = {}
+                    # merged component is often a JSON list string
+                    self._merged_comp_map[t] = comp
+                    self._merged_serv_map[t] = serv
+            else:
+                self._merged_comp_map = {}
+                self._merged_serv_map = {}
         except Exception:
             self._merged_comp_map = {}
             self._merged_serv_map = {}
@@ -256,11 +221,12 @@ class EdgeStore:
                 _coerce_val(e.get("source_timestamp_canonical")),
                 _coerce_val(e.get("target_timestamp_canonical")),
                 _coerce_val(e.get("target_semantic_text")),
+                _coerce_val(e.get("source_semantic_text")),
             )
             batch.append(row)
             if len(batch) >= batch_size:
                 cur.executemany(
-                    "INSERT INTO edges (source_index, source_id, target_id, source_timestamp, target_timestamp, time_delta_ms, retrieval_distance, retrieval_similarity, semantic_cosine, hybrid_score, alpha, target_metadata, target_component, target_service, source_component, source_service, source_timestamp_canonical, target_timestamp_canonical, target_semantic_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO edges (source_index, source_id, target_id, source_timestamp, target_timestamp, time_delta_ms, retrieval_distance, retrieval_similarity, semantic_cosine, hybrid_score, alpha, target_metadata, target_component, target_service, source_component, source_service, source_timestamp_canonical, target_timestamp_canonical, target_semantic_text, source_semantic_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     batch,
                 )
                 self.conn.commit()
@@ -269,7 +235,7 @@ class EdgeStore:
 
         if batch:
             cur.executemany(
-                "INSERT INTO edges (source_index, source_id, target_id, source_timestamp, target_timestamp, time_delta_ms, retrieval_distance, retrieval_similarity, semantic_cosine, hybrid_score, alpha, target_metadata, target_component, target_service, source_component, source_service, source_timestamp_canonical, target_timestamp_canonical, target_semantic_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO edges (source_index, source_id, target_id, source_timestamp, target_timestamp, time_delta_ms, retrieval_distance, retrieval_similarity, semantic_cosine, hybrid_score, alpha, target_metadata, target_component, target_service, source_component, source_service, source_timestamp_canonical, target_timestamp_canonical, target_semantic_text, source_semantic_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 batch,
             )
             self.conn.commit()

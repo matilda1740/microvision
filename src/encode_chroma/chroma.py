@@ -238,7 +238,24 @@ def ingest_to_chroma_atomic(
             collection = client.create_collection(name=collection_name)
 
         # chroma expects list-likes for ids/metadatas/documents and embeddings as list of lists
-        collection.add(ids=list(ids), metadatas=list(metadatas), documents=list(documents), embeddings=embeddings.tolist())
+        # Ingest in batches to avoid hitting Chroma's max batch size limit (approx 5k-40k depending on version)
+        # and to keep memory usage reasonable.
+        BATCH_SIZE = 2000
+        ids_list = list(ids)
+        metas_list = list(metadatas)
+        docs_list = list(documents)
+        embs_list = embeddings.tolist()
+        
+        total = len(ids_list)
+        for i in range(0, total, BATCH_SIZE):
+            end = min(i + BATCH_SIZE, total)
+            collection.add(
+                ids=ids_list[i:end],
+                metadatas=metas_list[i:end],
+                documents=docs_list[i:end],
+                embeddings=embs_list[i:end]
+            )
+
         # Persist if the client exposes a persist method; test fakes or
         # different chromadb versions may not implement it the same way.
         try:
