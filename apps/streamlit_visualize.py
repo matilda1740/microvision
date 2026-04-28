@@ -36,71 +36,99 @@ st.set_page_config(
 # Custom CSS to inject into the Streamlit app
 st.markdown("""
     <style>
-    /* FORCED SIDEBAR VISIBILITY: This will prevent it from remaining hidden when the page re-renders */
-    section[data-testid="stSidebar"] {
-        width: 280px !important;
-        visibility: visible !important;
-        transform: translate3d(0px, 0px, 0px) !important;
-        transition: none !important;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+
+    /* Sidebar Title Styling */
+    .sidebar-title {
+        font-size: 2.0rem !important;
+        font-weight: 700 !important;
+        color: #FFFFFF !important;
+        line-height: 1.0;
+    }
+
+    /* Main Title Styling */
+    .main-title {
+        font-size: 2.4rem !important;
+        font-weight: 800 !important;
+        color: #FFFFFF !important;
+        letter-spacing: -1px;
     }
     
-    /* Hide the close button on the sidebar to ensure the user doesn't accidentally collapse it again */
-    button[data-testid="sidebar-close-button"] {
+    .main-subtitle {
+        font-size: 1.1rem !important;
+        color: #A0A0A0 !important;
+        margin-top: -0.25rem !important;
+        margin-bottom: 0.75rem !important;
+        font-weight: 400;
+    }
+
+    /* Hide the default Streamlit header decoration */
+    [data-testid="stHeader"] {
         display: none !important;
     }
 
-    /* Adjust the main content area to follow the forced sidebar */
-    .stApp {
-        margin-left: initial !important;
+    /* Professional Sidebar & Layout Structure */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 0rem !important;
+        max-width: 95%;
+    }
+
+    /* Fixed Sidebar visibility - Ensure it doesn't clip content */
+    [data-testid="stSidebar"] {
+        background-color: #262730 !important;
+        min-width: 300px !important;
+    }
+
+    [data-testid="stSidebarContent"] {
+        background-color: #262730 !important;
+        visibility: visible !important;
     }
     
-    /* Compact header and padding to fit graph on screen */
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 0rem;
-        max-width: 98%;
+    /* Sidebar Metrics Styling */
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.5rem !important;
     }
-    h1 {
-        margin-top: -1rem;
-        font-size: 2.2rem !important;
-        color: #1E88E5;
+    
+    /* Fixed: Use backticks style selector that works with Streamlit's internal CSS */
+    [data-testid="stSidebar"] code {
+        color: #00FF41 !important;
+        background-color: rgba(0, 255, 65, 0.1) !important;
+        border: 1px solid rgba(0, 255, 65, 0.2) !important;
     }
-    h3 {
-        font-size: 1.1rem !important;
-        margin-top: -2rem;
+
+    [data-testid="stSidebar"] .stMarkdown h3, 
+    [data-testid="stSidebar"] [data-testid="stHeader"] {
+        color: #A0A0A0 !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.8rem !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.5rem !important;
     }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 40px;
-        white-space: pre-wrap;
-    }
-    /* Hide the top decoration bar and reduce vertical margins between widgets */
-    [data-testid="stHeader"] {
-        display: none;
-    }
-    .stMainBlockContainer {
-        padding-top: 0rem !important;
+
+    /* Target the text inside subheaders specifically for sidebar visibility */
+    [data-testid="stSidebar"] div[data-testid="stSubheader"] > div {
+        color: #A0A0A0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Add Main Title to the toolbar area (Top of the page)
-st.title("🛡️ MicroVision")
-st.markdown("### Context-Aware Microservice Dependency Discovery")
-
-st.sidebar.title("🛡️ MicroVision")
+# Sidebar Branding
+st.sidebar.markdown('<p class="sidebar-title">🛡️ MicroVision</p>', unsafe_allow_html=True)
 st.sidebar.markdown("---")
+
+# Main Screen Branding
+st.markdown('<p class="main-title">🛡️ MicroVision</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-subtitle">Context-Aware Microservice Dependency Discovery</p>', unsafe_allow_html=True)
 
 # 1. Project Context Section
 st.sidebar.subheader("Project Context")
-st.sidebar.markdown("""
-**Dataset**: OpenStack Baseline  
-**Logs Processed**: 183,895  
+st.sidebar.markdown(f"""
+**Dataset**: `OpenStack Baseline`  
+**Logs Processed**: `183,895`  
 **Core Model**: `all-mpnet-base-v2`  
-**Validation Engine**: Llama 3.1
+**Validation Engine**: `Llama 3.1`
 """)
 
 st.sidebar.markdown("---")
@@ -119,6 +147,18 @@ st.sidebar.caption("MicroVision")
 
 
 # --- Helper Functions ---
+def get_manifest_files():
+    """List available run manifests."""
+    manifest_dirs = [
+        repo_root / "data" / "openstack" / "run_manifests",
+        repo_root / "data" / "run_manifests"
+    ]
+    files = []
+    for d in manifest_dirs:
+        if d.exists():
+            files.extend(list(d.glob("*.json")))
+    return sorted(files, key=lambda x: x.name, reverse=True)
+
 def load_edges_data(db_path):
     if not Path(db_path).exists():
         return None
@@ -177,13 +217,20 @@ with tab1:
     
     with col1:
         st.markdown("<h4 style='margin-top: -10px; margin-bottom: 0px;'>Service Dependency Map</h4>", unsafe_allow_html=True)
-        # Load the pre-generated HTML graph
-        graph_path = Path("data/service_dependency_graph_llm_verified.html")
-        if not graph_path.exists():
-            # Fallback
-            graph_path = Path("data/service_dependency_graph.html")
+        # Priority: Check demo_artifacts (for cloud) then local data
+        graph_locations = [
+            repo_root / "docs" / "demo_artifacts" / "service_dependency_graph_llm_verified.html",
+            repo_root / "data" / "service_dependency_graph_llm_verified.html",
+            repo_root / "data" / "service_dependency_graph.html"
+        ]
         
-        if graph_path.exists():
+        graph_path = None
+        for loc in graph_locations:
+            if loc.exists():
+                graph_path = loc
+                break
+        
+        if graph_path and graph_path.exists():
             with open(graph_path, 'r', encoding='utf-8') as f:
                 html_data = f.read()
             
@@ -219,12 +266,20 @@ with tab1:
         st.subheader("System Metrics")
         
         # Quick stats from DB
-        db_path = "data/openstack/edges/edges.db"
-        if not Path(db_path).exists():
-            # fallback path
-            db_path = "data/edges/edges.db"
+        # Priority: Check demo_artifacts first for cloud deployment, then local data
+        db_locations = [
+            repo_root / "docs" / "demo_artifacts" / "edges.db",
+            repo_root / "data" / "openstack" / "edges" / "edges.db",
+            repo_root / "data" / "edges" / "edges.db"
+        ]
+        
+        db_path = None
+        for loc in db_locations:
+            if loc.exists():
+                db_path = str(loc)
+                break
             
-        df = load_edges_data(db_path)
+        df = load_edges_data(db_path) if db_path else None
         
         if df is not None:
             total_edges = len(df)

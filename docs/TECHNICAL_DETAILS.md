@@ -1,3 +1,50 @@
+# MicroVision: Deep Dive & Technical Architecture
+
+## 1. Data Flow Pipeline
+
+The MicroVision pipeline transforms raw log data into a semantic dependency graph through the following stages:
+
+1.  **Ingestion & Sampling**: Raw logs (e.g., OpenStack logs) are ingested. A representative sample is extracted for balanced analysis.
+2.  **Parsing (Drain3)**: The `Drain3` algorithm parses raw log messages into structured templates. This reduces millions of logs into a manageable set of unique behaviors.
+3.  **Metadata Extraction**: Service names, components, and ISO-canonicalized timestamps are extracted and preserved.
+4.  **Cleaning & Merging**: Templates are grouped semantically, and structured metadata is aggregated using mode-selection for canonical scalar values.
+5.  **Embedding (SBERT)**: Log templates are encoded into 768-dimensional vectors using the `all-mpnet-base-v2` model.
+6.  **Vector Storage (ChromaDB)**: Embeddings are persisted in a vector database for high-performance similarity retrieval.
+7.  **Hybrid Retrieval**: A dual-path engine (Semantic Similarity + Keyword Overlap) identifies candidate relationships across service boundaries.
+8.  **LLM Validation**: A Large Language Model (Llama 3.1) acts as a judge, verifying causal links between services based on the technical context of the logs.
+9.  **Persistence**: Validated edges are stored in a SQLite-based `EdgeStore` for visualization and graph synthesis.
+
+## 2. Advanced Semantic Strategies
+
+### Dynamic Context Injection
+Instead of embedding raw log templates, we inject a "Context Header" (Service Identity + Distinctive Keywords) into the text before embedding. This reduces "Vocabulary Mismatch"—where dependent services share few common words—and pushes generic errors into service-specific vector clusters.
+
+### Hybrid Retrieval (Dense + Sparse)
+We implement a dual-path retrieval system to capture both concept and keyword accuracy:
+1. **Dense Path**: ChromaDB findings based on vector cosine similarity.
+2. **Sparse Path**: TF-IDF keyword overlap to catch exact technical matches (e.g., specific error codes).
+*Fusion Logic*: $Score_{hybrid} = \alpha \cdot Score_{dense} + (1 - \alpha) \cdot Score_{sparse}$
+
+## 3. Evaluation Results (OpenStack Benchmark)
+
+### Methodology
+The pipeline was evaluated against the **OpenStack Log Corpus** (207k lines) using a hybrid Ground Truth (Trace-based Request IDs + Known Static Architecture).
+
+### Key Metrics
+*   **Precision (~54%)**: The framework effectively filters out significant temporal noise, ensuring that half of all inferred edges are correct architectural dependencies.
+*   **Performance**: Processed 207,636 logs in ~12 seconds.
+*   **Precision Protection**: The LLM-validation layer prevented precision decay when the retrieval sensitivity ($\alpha$) was increased, preserving graph reliability.
+
+### Discovered Dependencies
+The system successfully reconstructed core OpenStack provisioning workflows without code instrumentation:
+1.  **Orchestration**: `nova-api` $\rightarrow$ `nova-compute`
+2.  **Placement**: `nova-scheduler` $\rightarrow$ `nova-compute`
+
+## 4. Engineering Challenges Resolved
+
+*   **Service Name Ambiguity**: Implemented custom regex extractors to resolve service identity from log file paths when content was generic.
+*   **Metadata Consistency**: Developed a centralized `time_utils` module to synchronize timestamps across diverse log formats.
+*   **Precision vs. Scalability**: Balanced the "Recall/Precision" trade-off by using a lightweight vector search for candidates and a "heavy" LLM only for final validation.
 # MicroVision Architecture & Results
 
 ## 1. Data Flow Pipeline
