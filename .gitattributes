@@ -1,0 +1,9 @@
+# Tell GitHub to treat notebooks as documentation so they don't count towards language statistics
+notebooks/*.ipynb linguist-documentation=true
+
+# Ensure generated HTML graphs are also treated as documentation/assets
+notebooks/*.html linguist-documentation=true
+data/*.html linguist-documentation=true
+
+# Mark vendor libraries as vendored
+lib/** linguist-vendored=true
