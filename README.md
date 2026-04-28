@@ -32,7 +32,7 @@ Our pipeline implements a **Retrieval-Augmented Semantic Analysis** framework:
 | :---: | :---: |
 | ![Dashboard](docs/images/dashboard.png) | ![Forensics](docs/images/forensics.png) |
 
-| Causal Reasoning | Sensitivity Optimization |
+| System Architecture | Sensitivity Optimization |
 | :---: | :---: |
 | ![Architecture](docs/images/sysarch.png) | ![Sensitivity](docs/images/sensitivity_plot.png) |
 
