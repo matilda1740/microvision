@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 📋 The Problem
-Enterprises managing microservice architectures often lack up-to-date dependency maps. Existing solutions like **Distributed Tracing** require expensive code instrumentation, while **Static Analysis** misses dynamic runtime behaviors.
+Enterprises managing microservice architectures often lack runtime dependency maps. Existing solutions like **Distributed Tracing** require expensive code instrumentation, while **Static Analysis** misses dynamic runtime behaviors.
 
 **MicroVision** bridges this gap by using logs, the most abundant but "noisiest" system artifact, to reconstruct service relationships using **Semantic Reasoning** and **Vector Retrieval**.
 
@@ -38,22 +38,23 @@ Our pipeline implements a **Retrieval-Augmented Semantic Analysis** framework:
 
 ---
 
-## �🚀 Quick Start (Demo Mode)
+## 🚀 Live Demo & Quick Start
 
-### 1. Installation
+### ⚡ Instant Preview
+[**Access the Interactive Dashboard (OpenStack Benchmark)**](https://microvisionlogs.streamlit.app)  
+*Explore the inferred dependencies, LLM forensics, and metrics in seconds.*
+
+### 🛠️ Local Installation
+If you prefer to run the dashboard locally or inspect the source:
 ```bash
 git clone https://github.com/matilda1740/microvision.git
 cd microvision
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-```
-
-### 2. View Results
-```bash
 streamlit run apps/streamlit_visualize.py
 ```
-*Note: The dashboard loads pre-computed results from the OpenStack 183k log benchmark.*
+*Note: The local app utilizes pre-computed artifacts stored in `docs/demo_artifacts/` for immediate startup.*
 
 ---
 
