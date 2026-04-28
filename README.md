@@ -3,13 +3,13 @@
 **"Automated architectural recovery from high-volume system logs using semantic vector retrieval."**
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://microvision.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://microvisionlogs.streamlit.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 📋 The Problem
 Enterprises managing microservice architectures often lack up-to-date dependency maps. Existing solutions like **Distributed Tracing** require expensive code instrumentation, while **Static Analysis** misses dynamic runtime behaviors.
 
-**MicroVision** bridges this gap by using logs—the most abundant but "noisiest" system artifact—to reconstruct service relationships using **Semantic Reasoning** and **Vector Retrieval**.
+**MicroVision** bridges this gap by using logs, the most abundant but "noisiest" system artifact, to reconstruct service relationships using **Semantic Reasoning** and **Vector Retrieval**.
 
 ---
 
@@ -18,7 +18,7 @@ Enterprises managing microservice architectures often lack up-to-date dependency
 ![MicroVision System Architecture](docs/images/sysarch.png)
 
 Our pipeline implements a **Retrieval-Augmented Semantic Analysis** framework:
-1.  **Ingestion**: Streaming or batch loading of raw system logs (e.g., OpenStack, HDFS).
+1.  **Ingestion**: Streaming or batch loading of raw system logs (e.g., OpenStack from LogHub).
 2.  **Semantic Parsing**: Using customized `Drain3` to extract templates and preserve technical metadata.
 3.  **Vector Retrieval**: Embedding templates into high-dimensional space via `all-mpnet-base-v2` and storing them in **ChromaDB**.
 4.  **Causal Validation**: Using LLM-as-a-Judge to verify candidate edges, reducing noise by up to 60%.
@@ -46,7 +46,7 @@ git clone https://github.com/matilda1740/microvision.git
 cd microvision
 python -m venv .venv
 source .venv/bin/activate
-pip install .
+pip install -e .
 ```
 
 ### 2. View Results
@@ -64,7 +64,7 @@ streamlit run apps/streamlit_visualize.py
 | **Log Volume** | 183,895 Lines |
 | **Parsing Latency** | < 12 seconds |
 | **Precision Boost** | +35% vs Synthesis Baseline |
-| **Key Insight** | Successfully mapped `nova-api` -> `neutron` without code changes. |
+| **Key Insight** | Successfully mapped `nova-api` → `nova-scheduler` via semantic event sequencing. |
 
 [**Read the Full Technical Case Study & Lessons Learned →**](docs/CASE_STUDY.md)
 
@@ -83,7 +83,7 @@ streamlit run apps/streamlit_visualize.py
 ## 💡 What I Learned
 During this project, I tackled:
 *   **High-Volume Data Pipelines**: Optimizing the flow of 180k+ logs through a multi-stage refinement process.
-*   **Semantic Search**: Balancing the "Precision vs. Recall" trade-off in vector retrieval.
-*   **Explainable AI (XAI)**: Designing a "Forensics" UI that surfaces the logical reasoning behind AI-inferred dependencies.
+*   **Semantic Search**: Balancing the Precision vs. Recall trade-off in vector retrieval.
+*   **Explainable AI (XAI)**: Designing a Forensics UI that surfaces the logical reasoning behind AI-inferred dependencies.
 
 
