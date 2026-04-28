@@ -1,21 +1,43 @@
 # Virtual environment
+.venv/
 venv/
+env/
 .env
 
-# Data directories
-data/*
-notebooks/data/*
-# Python cache
+# Data directories - IMPORTANT: We only push templates/metadata, not full databases
+data/openstack/chroma_db/
+data/openstack/edges/*.db
+data/openstack/edges/*.db-shm
+data/openstack/edges/*.db-wal
+data/run_manifests/
+data/merge_diagnostics.json
+# Block large CSVs specifically
+data/openstack/parsed_sample.csv
+notebooks/data/OpenStack_full.log_structured.csv
+notebooks/data/*.csv
+
+# Python cache & packaging
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+*.egg
 
-# IDE files
+# IDE & OS files
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 
-# Logs
+# Logs & Large Artifacts
 *.log
+notebooks/service_dependency_graph*.html
+notebooks/edges*.csv
+docs/images/*.DS_Store
 
-# embeddings and enriched data
-*_embeddings.csv
-*_enriched.csv

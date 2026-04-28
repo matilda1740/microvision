@@ -1,374 +1,324 @@
-"""Streamlit app to run the MicroVision pipeline and visualize the edges DB.
+"""Streamlit app for MicroVision Results Presentation.
 
-This page contains two main sections on the same page:
-- ⚙️ Pipeline Execution: run the full pipeline and display stage-level
-  progress using st.spinner and success messages.
-- Graph Visualizer: generate and embed a pyvis HTML from the edges DB.
+This dashboard focuses on "presentation mode" - visualizing pre-computed artifacts
+(Graphs, Metrics, Logs) rather than running the heavy pipeline.
 
-The visualizer does not currently depend on the uploader/consumer; the
-Run button will execute the existing `scripts/run_full_pipeline.py` and
-watch its stdout to update the UI.
+Structure:
+- 📊 Executive Dashboard: High-level metrics + The Main Graph
+- 🔍 Forensics: Deep dive into specific edge verifications (LLM reasoning)
+- 📈 Sensitivity Analysis: Review the hyperparameter tuning study
 """
 from __future__ import annotations
 
-import re
 import sys
-import subprocess
-import tempfile
-import time
-import datetime
-from pathlib import Path
-
-import pandas as pd
-import numpy as np
 import json
+import sqlite3
+from pathlib import Path
+import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Ensure top-level repo packages are importable when Streamlit runs the app.
-# Prefer proper packaging (pip install -e .) but fall back to adding the
-# repository root to sys.path if imports fail at runtime.
-try:
-    from scripts.visualize_graph import load_edges_from_db
-    from src.visualization.graph import edges_to_networkx, write_pyvis_html
-    from src.storage.edge_store import EdgeStore
-    from src.retrieval.retriever import compute_candidate_edges_stream
-    from src.utils.atomic_write import atomic_save_npy, atomic_write_json
-except Exception:
-    import pathlib as _pathlib
+# Ensure repo root on path
+repo_root = Path(__file__).resolve().parents[1]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
-    repo_root = _pathlib.Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    # Retry imports
-    from scripts.visualize_graph import load_edges_from_db
-    from src.visualization.graph import edges_to_networkx, write_pyvis_html
-    from src.storage.edge_store import EdgeStore
-    from src.retrieval.retriever import compute_candidate_edges_stream
-    from src.utils.atomic_write import atomic_save_npy, atomic_write_json
+from config.settings import settings
+
+# --- Layout & Config ---
+
+st.set_page_config(
+    layout="wide", 
+    page_title="MicroVision Dashboard", 
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS to inject into the Streamlit app
+st.markdown("""
+    <style>
+    /* FORCED SIDEBAR VISIBILITY: This will prevent it from remaining hidden when the page re-renders */
+    section[data-testid="stSidebar"] {
+        width: 280px !important;
+        visibility: visible !important;
+        transform: translate3d(0px, 0px, 0px) !important;
+        transition: none !important;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Hide the close button on the sidebar to ensure the user doesn't accidentally collapse it again */
+    button[data-testid="sidebar-close-button"] {
+        display: none !important;
+    }
+
+    /* Adjust the main content area to follow the forced sidebar */
+    .stApp {
+        margin-left: initial !important;
+    }
+    
+    /* Compact header and padding to fit graph on screen */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+        max-width: 98%;
+    }
+    h1 {
+        margin-top: -1rem;
+        font-size: 2.2rem !important;
+        color: #1E88E5;
+    }
+    h3 {
+        font-size: 1.1rem !important;
+        margin-top: -2rem;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2rem;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 40px;
+        white-space: pre-wrap;
+    }
+    /* Hide the top decoration bar and reduce vertical margins between widgets */
+    [data-testid="stHeader"] {
+        display: none;
+    }
+    .stMainBlockContainer {
+        padding-top: 0rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Add Main Title to the toolbar area (Top of the page)
+st.title("🛡️ MicroVision")
+st.markdown("### Context-Aware Microservice Dependency Discovery")
+
+st.sidebar.title("🛡️ MicroVision")
+st.sidebar.markdown("---")
+
+# 1. Project Context Section
+st.sidebar.subheader("Project Context")
+st.sidebar.markdown("""
+**Dataset**: OpenStack Baseline  
+**Logs Processed**: 183,895  
+**Core Model**: `all-mpnet-base-v2`  
+**Validation Engine**: Llama 3.1
+""")
+
+st.sidebar.markdown("---")
+
+# 2. Tech Stack Branding (Small & Professional)
+st.sidebar.subheader("Pipeline Stats")
+st.sidebar.success("✅ **Artifact Mode Active**")
+st.sidebar.info("Retrieval-Augmented Semantic Log Analysis framework is engaged.")
+
+# 4. Feedback Loop for Interactive Demo
+if st.sidebar.button("💡 Refresh Artifacts"):
+    st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.caption("MicroVision")
 
 
-st.title("Microvision: Pipeline & Graph")
-
-st.subheader("⚙️ Pipeline Execution")
-
-# Pipeline inputs (same flags as scripts/run_full_pipeline.py)
-source = st.text_input("Log source (file or directory)", value="data/sample_raw.csv")
-sample = st.number_input("Sample size", value=1000, min_value=1, step=1)
-# Prefer centralized defaults from config.settings when available
-db_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_DB", "data/edges/edges_smoke.db")
-chroma_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_CHROMA_DIR", "data/chroma_db/chroma_smoke")
-db_path = st.text_input("Edges DB path", value=db_default)
-chroma_dir = st.text_input("Chroma persist dir", value=chroma_default)
-top_k = st.number_input("Top K", value=10, min_value=1, step=1)
-threshold = st.number_input("Threshold", value=0.2, min_value=0.0, max_value=1.0, format="%.2f")
-alpha = st.number_input("Alpha (hybrid)", value=0.5, min_value=0.0, max_value=1.0, format="%.2f")
-device = st.text_input("Device (leave blank for auto)", value="")
-
-
-def _run_pipeline_direct(
-    source: str,
-    sample: int,
-    db_path: str,
-    chroma_dir: str,
-    top_k: int,
-    threshold: float,
-    alpha: float,
-    device: str | None = None,
-) -> None:
-    """Run pipeline stages directly using the refactored functions in
-    `scripts.run_full_pipeline.py` and update Streamlit UI spinners.
-
-    This removes the previous subprocess/stdout parsing approach and calls
-    the stage functions directly, which is more robust and testable.
-    """
-
-    from scripts.run_full_pipeline import (
-        sample_source,
-        parse_sample_rows,
-        load_parsed_df,
-        preprocess_and_merge,
-        build_metadatas_from_aggregated,
-        compute_embeddings_for_use_df,
-        ingest_embeddings_atomic,
-        compute_and_persist_edges,
-    )
-    from src.persistence.transitions import compute_and_persist_transitions
-
-    parsing_ph = st.empty()
-    preproc_ph = st.empty()
-    embed_ph = st.empty()
-    retrieval_ph = st.empty()
-    raw_log_expander = st.expander("Show pipeline logs")
-    log_lines: list[str] = []
-
-    def _append_log(msg: str) -> None:
-        nonlocal log_lines
-        log_lines.append(msg)
-        if len(log_lines) > 500:
-            log_lines = log_lines[-500:]
-        # display latest logs in the expander as plain text
-        with raw_log_expander:
-            for ln in log_lines[-200:]:
-                st.text(ln)
-
+# --- Helper Functions ---
+def load_edges_data(db_path):
+    if not Path(db_path).exists():
+        return None
+    
+    conn = sqlite3.connect(db_path)
+    # Fetch typical columns + LLM verification
+    # Try/except block to handle schemas that might not have llm columns yet
     try:
-        # 1) Sampling + Parsing
-        with st.spinner("Parsing logs..."):
-            _append_log(f"Sampling source={source} sample={sample}")
-            sampled = sample_source(Path(source), int(sample))
-            _append_log(f"Sampled {len(sampled)} rows")
+        df = pd.read_sql_query("SELECT source_service, target_service, hybrid_score, llm_verification, llm_confidence FROM edges", conn)
+    except:
+        df = pd.read_sql_query("SELECT source_service, target_service, hybrid_score FROM edges", conn)
+    conn.close()
+    return df
 
-            parsed_path = Path("data/parsed_sample.csv")
-            templates_path = Path("data/parsed_templates.csv")
-            save_every = max(1, int(sample) // 4)
-            parse_sample_rows(sampled, parsed_path, templates_path, log_format=None, save_every=save_every)
-            parsed_df = load_parsed_df(parsed_path)
-            parsing_ph.success(f"Parsed {len(parsed_df)} log entries.")
+def parse_llm_reasoning(row):
+    """Safe extraction and beautification of LLM JSON reasoning."""
+    if "llm_verification" not in row or not row["llm_verification"]:
+        return "Not Verified"
+    try:
+        data = json.loads(row["llm_verification"])
+        reason = data.get("reasoning", "No valid reasoning")
+        
+        # Replace generic "Log A" and "Log B" with actual service names for better forensics
+        src = row.get("source_service", "Source")
+        tgt = row.get("target_service", "Target")
+        
+        # Note: st.dataframe does not support Markdown emboldening inside cells for the 'reasoning' column.
+        # We will capitalize them to make them stand out visually instead.
+        reason = reason.replace("Log A", src.upper()).replace("log a", src.upper())
+        reason = reason.replace("Log B", tgt.upper()).replace("log b", tgt.upper())
+        
+        return reason
+    except:
+        return "Parse Error"
 
-        # 2) Preprocessing: cleaning/merge/metadatas
-        with st.spinner("Preprocessing Parsed logs..."):
-            cleaned_path = Path("data/cleaned_templates.csv")
-            merged_out = Path("data/merged_templates.csv")
-            cleaned, aggregated = preprocess_and_merge(parsed_df, cleaned_path, merged_out)
-            _append_log(f"Cleaned={len(cleaned)} merged={len(aggregated)}")
-            metas = build_metadatas_from_aggregated(aggregated)
-            preproc_ph.success(f"Preprocessed templates: {len(aggregated)} rows")
+def get_verification_status(row):
+    """Categorize edge status."""
+    if "llm_verification" not in row or not row["llm_verification"]:
+        return "Unverified"
+    try:
+        data = json.loads(row["llm_verification"])
+        if data.get("is_causal", False):
+            return "Verified (Causal)"
+        return "Rejected"
+    except:
+        return "Error"
 
-        # 3) Embedding
-        with embed_ph.container():
-            model_name = getattr(__import__("config.settings", fromlist=["settings"]).settings, "EMBEDDING_MODEL", "all-mpnet-base-v2")
-            if device is None or device == "":
-                import os as _os
 
-                device = "cuda" if (_os.environ.get("CUDA_VISIBLE_DEVICES") or _os.path.exists("/usr/local/cuda")) else "cpu"
+# --- Page Logic ---
+tab1, tab2, tab3 = st.tabs(["📊 Executive Dashboard", "🔍 Forensics", "📈 Sensitivity Analysis"])
 
-            # Attempt to load embeddings from disk cache (validate metadata)
-            emb_default = getattr(__import__("config.settings", fromlist=["settings"]).settings, "DEFAULT_EMBEDDINGS_DIR", "data/edges")
-            out_dir = Path(emb_default)
-            emb_path = out_dir / "embeddings.npy"
-            meta_path = out_dir / "embeddings.meta.json"
-            docs = aggregated["semantic_text"].fillna("").astype(str).tolist()
+# === TAB 1: DASHBOARD ===
+with tab1:
+    # Set the graph to take more space on the left
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.markdown("<h4 style='margin-top: -10px; margin-bottom: 0px;'>Service Dependency Map</h4>", unsafe_allow_html=True)
+        # Load the pre-generated HTML graph
+        graph_path = Path("data/service_dependency_graph_llm_verified.html")
+        if not graph_path.exists():
+            # Fallback
+            graph_path = Path("data/service_dependency_graph.html")
+        
+        if graph_path.exists():
+            with open(graph_path, 'r', encoding='utf-8') as f:
+                html_data = f.read()
+            
+            # Update the style of the inner PyVis container before rendering
+            # We look for the 'mynetwork' id which PyVis uses by default and force its height
+            centered_html = f"""
+            <style>
+                #mynetwork {{
+                    height: 450px !important;
+                    width: 100% !important;
+                    border: 1px solid #eee;
+                    border-radius: 8px;
+                    margin: 0 auto !important;
+                }}
+            </style>
+            <div style="width: 100%; display: flex; justify-content: center;">
+                <div style="width: 100%; max-width: 1200px;">
+                    {html_data}
+                </div>
+            </div>
+            """
+            
+            st.components.v1.html(
+                centered_html,
+                height=480, 
+                scrolling=False
+            )
+            st.caption(f"Rendering: `{graph_path.name}`. Green = Verified, Red = Rejected, Blue = Unverified.")
+        else:
+            st.warning("No graph artifact found. Please run `visualize_graph.py` first.")
 
-            def _compute_hash(texts: list[str]) -> str:
-                import hashlib as _hashlib
-
-                h = _hashlib.sha256()
-                for t in texts:
-                    h.update(t.encode("utf-8", errors="surrogatepass"))
-                    h.update(b"\n")
-                return h.hexdigest()
-
-            cached_embeddings = None
-            try:
-                if emb_path.exists() and meta_path.exists():
-                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-                    if int(meta.get("count", -1)) == len(docs) and meta.get("hash") == _compute_hash(docs):
-                        cached_embeddings = np.load(emb_path)
-            except Exception:
-                cached_embeddings = None
-
-            if cached_embeddings is not None and len(cached_embeddings) == len(docs):
-                embeddings = cached_embeddings
-                documents = docs
-                _append_log(f"Loaded cached embeddings ({len(documents)} docs)")
+    with col2:
+        st.subheader("System Metrics")
+        
+        # Quick stats from DB
+        db_path = "data/openstack/edges/edges.db"
+        if not Path(db_path).exists():
+            # fallback path
+            db_path = "data/edges/edges.db"
+            
+        df = load_edges_data(db_path)
+        
+        if df is not None:
+            total_edges = len(df)
+            col2.metric("Total Edges", total_edges)
+            
+            if "llm_verification" in df.columns:
+                df["status"] = df.apply(get_verification_status, axis=1)
+                counts = df["status"].value_counts()
+                
+                # Metrics in a single row
+                m1, m2 = col2.columns(2)
+                verified = counts.get("Verified (Causal)", 0)
+                rejected = counts.get("Rejected", 0)
+                
+                m1.metric("Verified", verified)
+                if (verified + rejected) > 0:
+                    prec = (verified / (verified + rejected)) * 100
+                    m2.metric("LLM Precision", f"{prec:.0f}%")
+                
+                col2.write("### Status Breakdown")
+                col2.dataframe(counts, use_container_width=True)
+                
+                if (verified + rejected) > 0:
+                    noise_red = (rejected / (verified + rejected)) * 100
+                    col2.success(f"**{noise_red:.1f}%** Noise Filtered via LLM")
             else:
-                # Load model as a cached resource
-                @st.cache_resource
-                def get_model(name: str, device_str: str):
-                    try:
-                        from sentence_transformers import SentenceTransformer
-
-                        return SentenceTransformer(name, device=device_str)
-                    except Exception as e:
-                        raise RuntimeError("sentence-transformers required") from e
-
-                model = get_model(model_name, device)
-
-                # encode in batches and show progress
-                batch_size = 64
-                n = len(docs)
-                progress = st.progress(0)
-                encs = []
-                for i in range(0, n, batch_size):
-                    batch = docs[i : i + batch_size]
-                    arr = model.encode(batch, show_progress_bar=False, convert_to_numpy=True)
-                    encs.append(arr)
-                    progress.progress(min(100, int((i + len(batch)) / max(1, n) * 100)))
-                if encs:
-                    embeddings = np.vstack(encs)
-                else:
-                    embeddings = np.zeros((0, 0))
-
-                # save cache atomically
-                try:
-                    atomic_save_npy(emb_path, embeddings)
-                    atomic_write_json(meta_path, {"count": len(docs), "hash": _compute_hash(docs)})
-                except Exception:
-                    pass
-
-                documents = docs
-                _append_log(f"Computed embeddings for {len(documents)} documents")
-
-            # 4) Ingest into Chroma (optional)
-            ids = [str(i) for i in range(len(documents))]
-            client = None
-            collection = None
-            if chroma_dir:
-                try:
-                    res = ingest_embeddings_atomic(Path(chroma_dir), ids, metas, documents, embeddings)
-                    # The wrapper may return (client, collection, reused) or (client, collection)
-                    if isinstance(res, tuple) and len(res) == 3:
-                        client, collection, reused = res
-                    elif isinstance(res, tuple):
-                        client, collection = res
-                        reused = False
-                    else:
-                        client = res
-                        collection = None
-                        reused = False
-
-                    if reused:
-                        _append_log(f"Reused cached Chroma client for {chroma_dir}")
-
-                    _append_log(f"Ingested {len(ids)} vectors into Chroma at {chroma_dir}")
-                except Exception as e:
-                    _append_log(f"Chroma ingest failed: {e}")
-
-            embed_ph.success(f"Embedded {len(documents)} documents.")
-
-        # 5) Retrieval & persist
-        with retrieval_ph.container():
-            # Stream retrieval generator and write edges in batches while updating a progress bar
-            N = len(aggregated)
-            progress = st.progress(0)
-            store = EdgeStore(db_path)
-            store.init_db()
-            gen = compute_candidate_edges_stream(aggregated, embeddings=embeddings, collection=collection, top_k=int(top_k), threshold=float(threshold), batch_size=128, alpha=float(alpha))
-            batch = []
-            processed_sources = set()
-            written = 0
-            for e in gen:
-                batch.append(e)
-                processed_sources.add(int(e.get("source_index", -1)) if e.get("source_index") is not None else -1)
-                if len(batch) >= 250:
-                    written += store.write_edges(iter(batch), batch_size=500)
-                    batch = []
-                # update progress by unique source indices seen
-                prog = min(1.0, len([s for s in processed_sources if s >= 0]) / max(1, N))
-                progress.progress(int(prog * 100))
-            if batch:
-                written += store.write_edges(iter(batch), batch_size=500)
-            _append_log(f"Edges written: {written}")
-            transitions_written = compute_and_persist_transitions(db_path, min_count=1)
-            _append_log(f"Transitions written: {transitions_written}")
-            retrieval_ph.success(f"Edges written: {written}")
-
-        # 6) Manifest
-        try:
-            run_id = datetime.datetime.utcnow().strftime("run_%Y%m%dT%H%M%SZ")
-            manifest_dir = Path("data/run_manifests")
-            manifest_dir.mkdir(parents=True, exist_ok=True)
-            manifest_path = manifest_dir / f"{run_id}.json"
-            manifest = {"run_id": run_id, "started_at": datetime.datetime.utcnow().isoformat() + "Z", "source": source, "sample": int(sample), "events": [], "metrics": {}}
-            manifest["finished_at"] = datetime.datetime.utcnow().isoformat() + "Z"
-            manifest["edges_db"] = str(db_path)
-            from src.utils.atomic_write import atomic_write_json
-
-            atomic_write_json(manifest_path, manifest)
-            _append_log(f"Wrote manifest: {manifest_path}")
-        except Exception as _:
-            pass
-
-    except Exception as e:
-        # Surface the error in the UI and return failure so the caller
-        # doesn't incorrectly show a success message.
-        st.error(f"Pipeline failed: {e}")
-        _append_log(f"ERROR: {e}")
-        return False
-
-    # Write manifest and finish
-    try:
-        run_id = datetime.datetime.utcnow().strftime("run_%Y%m%dT%H%M%SZ")
-        manifest_dir = Path("data/run_manifests")
-        manifest_dir.mkdir(parents=True, exist_ok=True)
-        manifest_path = manifest_dir / f"{run_id}.json"
-        manifest = {"run_id": run_id, "started_at": datetime.datetime.utcnow().isoformat() + "Z", "source": source, "sample": int(sample), "events": [], "metrics": {}}
-        manifest["finished_at"] = datetime.datetime.utcnow().isoformat() + "Z"
-        manifest["edges_db"] = str(db_path)
-        from src.utils.atomic_write import atomic_write_json
-
-        atomic_write_json(manifest_path, manifest)
-        _append_log(f"Wrote manifest: {manifest_path}")
-    except Exception:
-        pass
-
-    return True
+                col2.info("LLM Verification data not found in DB.")
+        else:
+            col2.error("Database not found.")
 
 
-if st.button("Run MicroVision"):
-    st.info("Starting full pipeline (direct mode). Logs will appear in 'Show pipeline logs'.")
-    ok = _run_pipeline_direct(source=source, sample=int(sample), db_path=db_path, chroma_dir=chroma_dir, top_k=int(top_k), threshold=float(threshold), alpha=float(alpha), device=device if device else None)
-    if ok:
-        # On success, prompt user to view results in the Graph Visualizer and
-        # provide a quick action that pre-fills the visualization controls.
-        st.success("Full pipeline run completed (see logs above for details).")
-        # Previously we offered a quick "Open Graph Visualizer" jump here.
-        # That shortcut has been removed to simplify the UI and avoid
-        # unexpected auto-generation in the user's session.
+# === TAB 2: FORENSICS ===
+with tab2:
+    st.markdown("<h4 style='margin-top: -10px; margin-bottom: 0px;'>Deep Dive: Edge Inspection</h4>", unsafe_allow_html=True)
+    
+    if df is not None and "llm_verification" in df.columns:
+        # Filters
+        all_statuses = df["status"].unique().tolist() if "status" in df else ["Verified (Causal)", "Rejected", "Unverified"]
+        status_filter = st.multiselect("Filter by Status", all_statuses, default=[x for x in all_statuses if "Verified" in x or "Rejected" in x])
+        
+        # Apply Logic
+        df["reasoning"] = df.apply(parse_llm_reasoning, axis=1)
+        sub_df = df[df["status"].isin(status_filter)] if "status" in df else df
+        
+        st.dataframe(
+            sub_df[["source_service", "target_service", "status", "hybrid_score", "reasoning"]],
+            use_container_width=True,
+            height=420
+        )
     else:
-        st.error("Pipeline failed — see logs above for details.")
+        st.warning("Forensics mode requires a database with LLM validation columns.")
 
+# === TAB 3: SENSITIVITY ===
+with tab3:
+    st.markdown("<h4 style='margin-top: -10px; margin-bottom: 0px;'>Hyperparameter Sensitivity</h4>", unsafe_allow_html=True)
+    
+    # Left Column: Controls and Data Preview | Right Column: Plot and Analysis
+    t3_col1, t3_col2 = st.columns([1, 1], gap="large")
+    
+    with t3_col1:
+        st.markdown("**Dynamic Threshold Control**")
+        threshold = st.slider("Hybrid Similarity Threshold (α)", 0.0, 1.0, 0.70, step=0.05, label_visibility="collapsed")
+        st.write(f"Filtering at: **{threshold:.2f}**")
 
-st.markdown("---")
+        if df is not None:
+            filtered_df = df[df['hybrid_score'] >= threshold].copy()
+            
+            # Metrics in a two-column split for better alignment
+            m1, m2 = st.columns(2)
+            m1.metric("Survivors", len(filtered_df))
+            
+            # Precision Calculation
+            if "status" in filtered_df.columns:
+                counts = filtered_df["status"].value_counts()
+                verified = counts.get("Verified (Causal)", 0)
+                rejected = counts.get("Rejected", 0)
+                if (verified + rejected) > 0:
+                    m2.metric("LLM Precision", f"{(verified / (verified + rejected)) * 100:.0f}%")
 
-st.subheader("Graph Visualizer")
+            # Compact Preview
+            st.dataframe(
+                filtered_df[['source_service', 'target_service', 'hybrid_score']].head(8), 
+                use_container_width=True,
+                height=280
+            )
 
-# Visualization controls
-viz_db_path = st.text_input("Edges DB for visualization", value=db_path, key="viz_db")
-limit = st.number_input("Max edges to load", value=1000, min_value=10, step=10, key="viz_limit")
+    with t3_col2:
+        img_path = Path("docs/images/sensitivity_plot.png")
+        if img_path.exists():
+            # Force refresh with raw bytes
+            with open(img_path, "rb") as f:
+                st.image(f.read(), caption="Thesis Evaluation Strategy: Precision Protection", use_container_width=True)
+        else:
+            st.info("Sensitivity plot not found. Run scripts/generate_research_plot.py")
+            
 
-if st.button("Generate visualization"):
-    p = Path(viz_db_path)
-    if not p.exists():
-        st.error(f"Edges DB not found: {viz_db_path}")
-    else:
-        st.info("Loading edges and building graph...")
-        try:
-            edges = load_edges_from_db(str(p), limit=int(limit))
-            # Diagnostic: show counts and sample edges before building graph
-            edges_list = list(edges)
-            st.write(f"Loaded {len(edges_list)} edges from DB")
-            if len(edges_list) > 0:
-                # show first few edges to help debug (trim long values)
-                sample_edges = edges_list[:10]
-                st.json(sample_edges)
-
-            G = edges_to_networkx(edges_list)
-        except Exception as e:
-            st.error(f"Failed loading edges or building graph: {e}")
-            G = None
-
-        if G is not None:
-            tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
-            tmp.close()
-            try:
-                out = write_pyvis_html(G, tmp.name)
-                html = Path(tmp.name).read_text(encoding="utf-8")
-                # Diagnostic: show generated HTML header comment and a short snippet
-                if "<!-- graph-renderer:" in html:
-                    hdr = html.split("<!-- graph-renderer:", 1)[1].split("-->", 1)[0]
-                    st.text(f"HTML banner:{hdr.strip()}")
-                st.text(f"Generated HTML size: {len(html)} bytes")
-                components.html(html, height=800)
-            except Exception as e:
-                # Common pyvis failures stem from missing optional deps (jinja2)
-                st.error(
-                    "Could not render visualization with pyvis: %s. "
-                    "Install optional deps in the venv: `pip install pyvis jinja2` "
-                    "or view the raw edges in the Logs/DB." % e
-                )
-
-# Note: the previous auto-generate-on-jump logic has been removed since
-# the quick-jump button is no longer provided. Visualization is generated
-# only when the user explicitly clicks "Generate visualization".
+    st.divider()

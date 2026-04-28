@@ -1,7 +1,7 @@
 import sqlite3
 import os
-from src.storage.edge_store import EdgeStore
-from src.retrieval.retriever import compute_candidate_edges_stream
+from src.storage import EdgeStore
+from src.retrieval import compute_candidate_edges_stream
 import numpy as np
 import pandas as pd
 

@@ -22,6 +22,7 @@ except Exception:  # pragma: no cover - numpy optional here
 
 logger = logging.getLogger(__name__)
 from config.settings import settings
+from src.utils.time_utils import get_canonical_timestamp, to_iso_string, parse_timestamp_sequence
 
 
 def df_to_metadatas(
@@ -56,7 +57,7 @@ def df_to_metadatas(
         default_cols = getattr(
             settings,
             "DEFAULT_META_COLS",
-            ["template", "component", "doc_id", "id", "line_no", "orig_idx", "timestamp"],
+            ["template", "component", "doc_id", "id", "line_no", "orig_idx", "timestamp", "service", "level"],
         )
         meta_cols = [c for c in default_cols if c in df.columns]
     else:
@@ -84,83 +85,29 @@ def df_to_metadatas(
             # If this column looks like a timestamp candidate, try to parse
             if col in timestamp_candidates:
                 try:
-                    # handle list-like timestamp values (pandas Index/Series, lists, ndarrays)
-                    if pd is not None and isinstance(val, (pd.Index, pd.Series)):
-                        seq = list(val)
-                    elif np is not None and isinstance(val, np.ndarray):
-                        seq = val.tolist()
-                    elif isinstance(val, (list, tuple)):
-                        seq = list(val)
-                    elif isinstance(val, str) and "," in val:
-                        seq = [s.strip() for s in val.split(",") if s.strip()]
+                    # Use shared utility to parse sequence of timestamps
+                    parsed = parse_timestamp_sequence(val)
+
+                    if not parsed:
+                        row_meta[col] = None
                     else:
-                        seq = None
+                        # sort parsed timestamps
+                        parsed_sorted = sorted(parsed)
+                        
+                        # compute canonical timestamp using shared utility
+                        canonical = get_canonical_timestamp(parsed_sorted)
 
-                    if seq is not None:
-                        # Parse each element into a pandas Timestamp (UTC)
-                        parsed = []
-                        for element in seq:
-                            try:
-                                ts2 = pd.to_datetime(element, utc=True, errors="coerce")
-                                if pd.isna(ts2):
-                                    logger.debug("df_to_metadatas: could not parse timestamp element=%r for col=%s (row=%d)", element, col, i)
-                                    continue
-                                parsed.append(ts2)
-                            except Exception:
-                                logger.debug("df_to_metadatas: exception parsing timestamp element=%r for col=%s (row=%d)", element, col, i)
-                                continue
-
-                        if len(parsed) == 0:
-                            row_meta[col] = None
-                        else:
-                            # sort parsed timestamps
-                            parsed_sorted = sorted(parsed)
-                            # compute canonical timestamp per settings
-                            policy = getattr(settings, "DEFAULT_TIMESTAMP_POLICY", "median")
-                            canonical = None
-                            if policy == "latest":
-                                canonical = parsed_sorted[-1]
-                            elif policy == "earliest":
-                                canonical = parsed_sorted[0]
-                            elif policy == "first":
-                                # first element by original order that parsed successfully
-                                for element in seq:
-                                    try:
-                                        ts_try = pd.to_datetime(element, utc=True, errors="coerce")
-                                        if not pd.isna(ts_try):
-                                            canonical = ts_try
-                                            break
-                                    except Exception:
-                                        continue
-                                if canonical is None:
-                                    canonical = parsed_sorted[0]
-                            else:
-                                # median by position; for even counts take midpoint
-                                m = len(parsed_sorted)
-                                if m % 2 == 1:
-                                    canonical = parsed_sorted[m // 2]
-                                else:
-                                    t0 = parsed_sorted[m // 2 - 1].value
-                                    t1 = parsed_sorted[m // 2].value
-                                    mid = (int(t0) + int(t1)) // 2
-                                    canonical = pd.to_datetime(mid, unit="ns", utc=True)
-
-                            # format ISO strings with Z for UTC
-                            iso_list = [ts.strftime("%Y-%m-%dT%H:%M:%SZ") for ts in parsed_sorted]
-                            canonical_iso = canonical.strftime("%Y-%m-%dT%H:%M:%SZ") if canonical is not None else None
-                            # store canonical scalar and full list (serialize list as JSON string)
-                            row_meta[col] = canonical_iso
-                            plural_key = (col + "s") if not col.endswith("s") else (col + "_list")
-                            try:
-                                row_meta[plural_key] = json.dumps(iso_list)
-                            except Exception:
-                                row_meta[plural_key] = ", ".join(iso_list)
-                    else:
-                        ts = pd.to_datetime(val, utc=True, errors="coerce")
-                        if pd.isna(ts):
-                            row_meta[col] = None
-                        else:
-                            row_meta[col] = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
+                        # format ISO strings with Z for UTC
+                        iso_list = [to_iso_string(ts) for ts in parsed_sorted]
+                        canonical_iso = to_iso_string(canonical)
+                        
+                        # store canonical scalar and full list (serialize list as JSON string)
+                        row_meta[col] = canonical_iso
+                        plural_key = (col + "s") if not col.endswith("s") else (col + "_list")
+                        try:
+                            row_meta[plural_key] = json.dumps(iso_list)
+                        except Exception:
+                            row_meta[plural_key] = ", ".join(iso_list)
                 except Exception:
                     # fallback: stringify
                     logger.debug("df_to_metadatas: timestamp fallback stringify for col=%s row=%d val=%r", col, i, val)

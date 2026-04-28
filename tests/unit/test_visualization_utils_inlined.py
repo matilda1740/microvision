@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import pytest
 
-from src.visualization.graph import edges_to_networkx, write_pyvis_html
+from src.visualization import edges_to_networkx, write_pyvis_html
 
 
 def test_write_inlines_utils_js(tmp_path):

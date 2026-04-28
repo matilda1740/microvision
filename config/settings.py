@@ -48,6 +48,13 @@ class Settings:
     DEFAULT_THRESHOLD = 0.2
     # Timestamp normalization policy: one of 'median', 'latest', 'earliest', 'first'
     DEFAULT_TIMESTAMP_POLICY = "median"
+
+    # LLM Verification Configuration (Ollama)
+    ENABLE_LLM_VALIDATION = True  # Enable to use local LLM for edge verification
+    OLLAMA_MODEL = "llama3.1"      # Model to use (must be pulled via `ollama pull`)
+    OLLAMA_BASE_URL = "http://localhost:11434" # Default Ollama URL
+    LLM_CONFIDENCE_THRESHOLD = 0.7 # Only keep edges with confidence >= this
+
     # Default metadata columns to include when building metadatas for vector stores.
     # Can be overridden per-call by passing `meta_cols` to `df_to_metadatas`.
     DEFAULT_META_COLS = [
@@ -58,6 +65,8 @@ class Settings:
         "doc_id",
         "orig_idx",
         "timestamp",
+        "service",
+        "level",
     ]
     DEFAULT_ALPHA = 0.5
     DEFAULT_DEVICE = None
@@ -93,6 +102,8 @@ class Settings:
         "core_fields": ["Component", "Level", "Method", "URL"],
         "enrich_fields": [
             "ReqID",
+            "TraceID",
+            "SpanID",
             "UserID",
             "TenantID",
             "IP",
@@ -106,6 +117,8 @@ class Settings:
             "Level",
             "Pid",
             "ReqID",
+            "TraceID",
+            "SpanID",
             "UserID",
             "TenantID",
             "IP",

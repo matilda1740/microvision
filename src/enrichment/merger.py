@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import logging
 from config.settings import settings
+from src.utils.time_utils import get_canonical_timestamp, to_iso_string, parse_timestamp_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -287,36 +288,12 @@ def merge_structured_metadata(
         Returns a list of ISO-8601 strings where possible.
         """
         flat = []
-        date_re = re.compile(r"\d{4}-\d{2}-\d{2}")
         for v in series.dropna().tolist():
-            candidates = v if isinstance(v, list) else [v]
-            for it in candidates:
-                if it is None:
-                    continue
-                # pandas Timestamp
-                try:
-                    if hasattr(it, "isoformat") and hasattr(it, "tzinfo"):
-                        s = str(it.isoformat())
-                    else:
-                        s = str(it)
-                except Exception:
-                    s = str(it)
-                if not s:
-                    continue
-                # accept if looks like a date (YYYY-MM-DD) or full ISO
-                if date_re.search(s):
-                    # normalize to plain ISO-like string
-                    # attempt to parse to pandas Timestamp for consistent formatting
-                    try:
-                        ts = pd.to_datetime(s, errors="coerce")
-                        if pd.notna(ts):
-                            s = ts.isoformat()
-                        else:
-                            s = s
-                    except Exception:
-                        s = s
-                    if s not in flat:
-                        flat.append(s)
+            parsed = parse_timestamp_sequence(v)
+            for ts in parsed:
+                s = to_iso_string(ts)
+                if s and s not in flat:
+                    flat.append(s)
         return flat
 
 
@@ -326,53 +303,8 @@ def merge_structured_metadata(
         Uses the project's DEFAULT_TIMESTAMP_POLICY (median/latest/earliest/first).
         Returns an ISO-like UTC string or None if no valid timestamps found.
         """
-        if not ts_list:
-            return None
-        parsed = []
-        for it in ts_list:
-            if it is None:
-                continue
-            try:
-                ts = pd.to_datetime(it, utc=True, errors="coerce")
-                if pd.notna(ts):
-                    parsed.append(ts)
-            except Exception:
-                continue
-        if not parsed:
-            return None
-        parsed_sorted = sorted(parsed)
-        policy = getattr(settings, "DEFAULT_TIMESTAMP_POLICY", "median")
-        if policy == "latest":
-            sel = parsed_sorted[-1]
-        elif policy == "earliest":
-            sel = parsed_sorted[0]
-        elif policy == "first":
-            # return the first parseable element in original order
-            for it in ts_list:
-                try:
-                    ts_try = pd.to_datetime(it, utc=True, errors="coerce")
-                    if pd.notna(ts_try):
-                        sel = ts_try
-                        break
-                except Exception:
-                    continue
-        else:
-            # median
-            m = len(parsed_sorted)
-            if m % 2 == 1:
-                sel = parsed_sorted[m // 2]
-            else:
-                t0 = parsed_sorted[m // 2 - 1].value
-                t1 = parsed_sorted[m // 2].value
-                mid = (int(t0) + int(t1)) // 2
-                sel = pd.to_datetime(mid, unit="ns", utc=True)
-        try:
-            return sel.strftime("%Y-%m-%dT%H:%M:%SZ")
-        except Exception:
-            try:
-                return str(sel.isoformat())
-            except Exception:
-                return None
+        ts = get_canonical_timestamp(ts_list)
+        return to_iso_string(ts)
 
     # Aggregate per template id (one row per template_id). For each template id
     # we select a representative semantic_text (the most frequent one) and
@@ -384,7 +316,25 @@ def merge_structured_metadata(
             if c == "timestamp":
                 agg_dict[c] = lambda s, col=c: unique_timestamps(s)
             else:
-                agg_dict[c] = (lambda s, col=c: unique_list(s))
+                # For service and component, we want a single scalar value (mode), not a list
+                if c in ["service", "component", "level"]:
+                    def _safe_mode(s):
+                        clean = s.dropna()
+                        if len(clean) == 0:
+                            return None
+                        try:
+                            return Counter(clean).most_common(1)[0][0]
+                        except TypeError:
+                            # fallback for unhashable types (like lists): convert to string or tuple
+                            try:
+                                return Counter(clean.apply(lambda x: tuple(x) if isinstance(x, list) else x)).most_common(1)[0][0]
+                            except Exception:
+                                return str(clean.iloc[0])
+
+                    agg_dict[c] = _safe_mode
+                else:
+                    agg_dict[c] = (lambda s, col=c: unique_list(s))
+
 
     # Determine the most-frequent semantic_text for each template id
     counts = merged.groupby([id_col_single, semantic_col]).size().reset_index(name="count")

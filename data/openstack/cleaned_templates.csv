@@ -1,0 +1,108 @@
+semantic_text,template_ids,occurrences,service
+nova-api.log.ts info nova.metadata.wsgi.server - ts get ts http status: ts len: ts time: ts,['13'],649,nova-api
+nova-api.log.ts info nova.osapi_compute.wsgi.server ts -ip ts http status: pid len: ts time: ts,"['1', '185']",6,nova-api
+nova-api.log.ts info nova.osapi_compute.wsgi.server ts -ip ts http status: ts len: ts time: ts,['192'],3,nova-api
+nova-api.log.ts info ts -ts http status: pid len: ts time: ts,"['1', '185']",5,nova-api
+nova-api.log.ts info ts -ts http status: ts len: ts time: ts,"['1', '185', '192']",54847,nova-api
+nova-api.log.ts pid critical keystonemiddleware.auth_token req_id-id -unable to validate token: failed to fetch token data from identity server,['190'],1,nova-api
+nova-api.log.ts pid error keystonemiddleware.auth_token req_id-id -bad response code while validating token: pid,['188'],1,nova-api
+nova-api.log.ts pid info nova.api.openstack.compute.server_external_events req_id-id -creating event network-vif-plugged:id for instance id,['9'],1,nova-api
+nova-api.log.ts pid info nova.api.openstack.compute.server_external_events ts id -creating event ts for instance ts,['9'],154,nova-api
+nova-api.log.ts pid info nova.api.openstack.wsgi req_id-id -http exception thrown: no instances found for any event,['15'],1,nova-api
+nova-api.log.ts pid info nova.api.openstack.wsgi ts id -http exception thrown: no instances found for any event,['15'],154,nova-api
+nova-api.log.ts pid info nova.metadata.wsgi.server - ipip get /openstack/ts/vendor_data.json http status: pid len: pid time: 0.0009141,['13'],1,nova-api
+nova-api.log.ts pid info nova.metadata.wsgi.server - ipip get ts http status: ts len: ts time: ts,['13'],1,nova-api
+nova-api.log.ts pid info nova.metadata.wsgi.server - ts get ts http status: ts len: ts time: ts,['13'],1,nova-api
+nova-api.log.ts pid info nova.osapi_compute.wsgi.server req_id-id -ip get /v2/id/servers/detail http status: pid len: pid time: 0.1919448,['1'],1,nova-api
+nova-api.log.ts pid info nova.osapi_compute.wsgi.server req_id-id -ip get /v2/id/servers/detail http status: pid len: pid time: 0.2477829,['185'],1,nova-api
+nova-api.log.ts pid info nova.osapi_compute.wsgi.server req_id-id -ip post /v2/id/servers http status: pid len: pid time: 0.5003779,['192'],1,nova-api
+nova-api.log.ts pid info nova.osapi_compute.wsgi.server ts id -ip get /v2/id/servers/detail http status: pid len: pid time: ts,['185'],13,nova-api
+nova-api.log.ts pid info nova.osapi_compute.wsgi.server ts id -ip get ts http status: pid len: ts time: ts,['1'],27,nova-api
+nova-api.log.ts pid info nova.osapi_compute.wsgi.server ts id -ip ts http status: ts len: ts time: ts,['192'],27,nova-api
+nova-api.log.ts pid warning keystonemiddleware.auth_token req_id-id -identity response: doctypehtmlpublic_ietfdtdhtml20en,['189'],1,nova-api
+nova-compute.log.ts pid error oslo_service.periodic_task req_id-id -error during computemanager._run_image_cache_manager_pass,['187'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.claims req_id-id -instance: id attempting claim: memory pid mb disk 20 gb vcpus 1 cpu,['18'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.claims req_id-id -instance: id total memory: pid mb used: pid.00 mb,['19'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.claims req_id-id -instance: id ts,['19'],4,nova-compute
+nova-compute.log.ts pid info nova.compute.claims req_id-id -instance: id ts mb ts mb,['19'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.claims ts id -instance: ts,['19'],924,nova-compute
+nova-compute.log.ts pid info nova.compute.claims ts id -instance: ts attempting claim: memory pid mb disk 20 gb vcpus 1 cpu,['18'],154,nova-compute
+nova-compute.log.ts pid info nova.compute.manager - instance: id during sync_power_state the instance has a pending task spawning. skip.,['12'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager - instance: id vm stopped lifecycle event,['3'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager - instance: ts during sync_power_state the instance has a pending task spawning. skip.,['12'],3,nova-compute
+nova-compute.log.ts pid info nova.compute.manager - instance: ts vm stopped lifecycle event,['3'],155,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -instance: id during sync_power_state the instance has a pending task spawning. skip.,"['6', '22', '23', '25', '26', '27', '29', '30', '31', '32', '34', '35', '36', '37', '38', '39', '40', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99', '100', '101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', '113', '114', '115', '116', '117', '118', '119', '120', '121', '122', '123', '124', '125', '126', '127', '128', '129', '130', '131', '132', '133', '134', '135', '136', '137', '138', '139', '140', '141', '142', '143', '144', '145', '146', '147', '148', '149', '150', '151', '152', '153', '154', '155', '156', '157', '158', '159', '160', '161', '162', '163', '164', '165', '166', '167', '168', '169', '170', '171', '172', '173', '174', '175', '176', '177', '178', '179', '180', '181']",156,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -instance: id terminating instance,['183'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -instance: id took 0.47 seconds to deallocate network for instance.,['14'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -instance: id took 19.66 seconds to spawn the instance on the hypervisor.,['182'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -instance: id took 21.38 seconds to build instance.,['11'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -instance: id vm started lifecycle event,"['5', '186']",2,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -instance: id vm ts lifecycle event,"['5', '186']",6,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -running instance usage audit for host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us from ts to ts instances.,['56'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager req_id-id -running instance usage audit for host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us from ts to ts. 88 instances.,['56'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager ts -instance: id ts,"['6', '22', '23', '25', '26', '27', '29', '30', '31', '32', '34', '35', '36', '37', '38', '39', '40', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '81', '82', '83', '84', '85', '86', '87', '88', '89', '90', '91', '92', '93', '94', '95', '96', '97', '98', '99', '100', '101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', '113', '114', '115', '116', '117', '118', '119', '120', '121', '122', '123', '124', '125', '126', '127', '128', '129', '130', '131', '132', '133', '134', '135', '136', '137', '138', '139', '140', '141', '142', '143', '144', '145', '146', '147', '148', '149', '150', '151', '152', '153', '154', '155', '156', '157', '158', '159', '160', '161', '162', '163', '164', '165', '166', '167', '168', '169', '170', '171', '172', '173', '174', '175', '176', '177', '178', '179', '180']",456,nova-compute
+nova-compute.log.ts pid info nova.compute.manager ts id -instance: id took ts seconds to ts the instance on the hypervisor.,['182'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.manager ts id -instance: ts took ts seconds to build instance.,['11'],154,nova-compute
+nova-compute.log.ts pid info nova.compute.manager ts id -instance: ts took ts seconds to deallocate network for instance.,['14'],154,nova-compute
+nova-compute.log.ts pid info nova.compute.manager ts id -instance: ts took ts seconds to ts the instance on the hypervisor.,['182'],81,nova-compute
+nova-compute.log.ts pid info nova.compute.resource_tracker req_id-id -auditing locally available compute resources for node cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us,['20'],1,nova-compute
+nova-compute.log.ts pid info nova.compute.resource_tracker req_id-id -final resource view: name=cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us phys_ram=64172mb ts phys_disk=15gb ts total_vcpus=16 ts pci_stats=,['21'],100,nova-compute
+nova-compute.log.ts pid info nova.compute.resource_tracker req_id-id -final resource view: name=cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us phys_ram=64172mb used_ram=2560mb phys_disk=15gb used_disk=20gb total_vcpus=16 used_vcpus=1 pci_stats=,['21'],6,nova-compute
+nova-compute.log.ts pid info nova.compute.resource_tracker req_id-id -ts,['20'],211,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.driver - instance: id instance spawned successfully.,['10'],1,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.driver - instance: id instance ts successfully.,['10'],1,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.driver - instance: ts instance ts successfully.,['10'],308,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.driver req_id-id -instance: id creating image,['2'],1,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.driver req_id-id -instance: id deleting instance files /var/lib/nova/instances/04fbe775-607f-pid-a598-3983b58a5f18_del,['184'],1,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.driver req_id-id -instance: id ts,['184'],1,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.driver ts id -instance: ts,['184'],80,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.imagecache req_id-id -base or swap file too young to remove: /var/lib/nova/instances/_base/id,['33'],57,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.imagecache req_id-id -image id at /var/lib/nova/instances/_base/id: checking,['7'],4,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.imagecache req_id-id -image id at /var/lib/nova/instances/_base/id: in use: on this node 1 local 0 on other nodes sharing this instance storage,['8'],602,nova-compute
+nova-compute.log.ts pid info nova.virt.libvirt.imagecache req_id-id -removing base or swap file: /var/lib/nova/instances/_base/id,"['17', '191']",2,nova-compute
+nova-compute.log.ts pid info ts -instance: id ts,['5'],2,nova-compute
+nova-compute.log.ts pid info ts -instance: ts,['5'],308,nova-compute
+nova-compute.log.ts pid info ts -ts,"['2', '17', '186', '191']",6793,nova-compute
+nova-compute.log.ts pid info ts id -instance: ts,['183'],122,nova-compute
+nova-compute.log.ts pid info ts req_id-id -ts,['7'],704,nova-compute
+nova-compute.log.ts pid ts nova.virt.libvirt.imagecache req_id-id -ts base ts /var/lib/nova/instances/_base/id,['16'],1021,nova-compute
+nova-compute.log.ts pid warning nova.compute.manager req_id-id -while synchronizing instance power states found 1 instances in the database and 0 instances on the hypervisor.,['4'],4,nova-compute
+nova-compute.log.ts pid warning nova.virt.libvirt.driver req_id-id -couldnt obtain the vcpu count from domain id: id exception: req_id: cpu affinity is not supported,['41'],1,nova-compute
+nova-compute.log.ts pid warning nova.virt.libvirt.imagecache req_id-id -unknown base file: /var/lib/nova/instances/_base/id,['16'],1,nova-compute
+nova-scheduler.log.ts pid info nova.scheduler.host_manager req_id-id -successfully synced instances from host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us.,['24'],1,nova-scheduler
+nova-scheduler.log.ts pid info nova.scheduler.host_manager req_id-id -the instance sync for host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us did not match. re-created its instancelist.,['28'],1,nova-scheduler
+nova-scheduler.log.ts pid info nova.scheduler.host_manager ts -successfully synced instances from host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us.,['24'],29,nova-scheduler
+nova-scheduler.log.ts pid info nova.scheduler.host_manager ts -the instance sync for host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us did not match. re-created its instancelist.,['28'],22,nova-scheduler
+ts critical keystonemiddleware.auth_token ts id -unable to validate token: failed to fetch token data from identity server,['190'],1,nova-api
+ts error keystonemiddleware.auth_token ts id -bad response code while validating token: pid,['188'],1,nova-api
+ts info nova.api.openstack.compute.server_external_events ts id -creating event ts for instance ts,['9'],1313,nova-api
+ts info nova.metadata.wsgi.server - ts get ts http status: ts len: ts time: ts,['13'],8544,nova-api
+ts info ts -ts http status: ts len: ts time: ts,"['1', '185', '192']",34606,nova-api
+ts pid error oslo_service.periodic_task req_id-id -error during computemanager._run_image_cache_manager_pass,['187'],7,nova-compute
+ts pid info nova.api.openstack.compute.server_external_events ts id -creating event ts for instance ts,['9'],597,nova-api
+ts pid info nova.api.openstack.wsgi ts id -http exception thrown: no instances found for any event,['15'],1909,nova-api
+ts pid info nova.compute.claims ts id -instance: ts,['19'],11460,nova-compute
+ts pid info nova.compute.claims ts id -instance: ts attempting claim: memory pid mb disk 20 gb vcpus 1 cpu,['18'],1910,nova-compute
+ts pid info nova.compute.manager - instance: ts during sync_power_state the instance has a pending task spawning. skip.,['12'],61,nova-compute
+ts pid info nova.compute.manager - instance: ts vm stopped lifecycle event,['3'],1911,nova-compute
+ts pid info nova.compute.manager req_id-id -instance: id during sync_power_state the instance has a pending task spawning. skip.,['181'],2,nova-compute
+ts pid info nova.compute.manager req_id-id -instance: ts during sync_power_state the instance has a pending task spawning. skip.,['181'],3680,nova-compute
+ts pid info nova.compute.manager req_id-id -running instance usage audit for host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us from ts to ts instances.,['56'],28,nova-compute
+ts pid info nova.compute.manager ts id -instance: ts took ts seconds to build instance.,['11'],1911,nova-compute
+ts pid info nova.compute.manager ts id -instance: ts took ts seconds to deallocate network for instance.,['14'],1910,nova-compute
+ts pid info nova.compute.manager ts id -instance: ts took ts seconds to ts the instance on the hypervisor.,['182'],3737,nova-compute
+ts pid info nova.compute.resource_tracker req_id-id -final resource view: name=cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us phys_ram=64172mb ts phys_disk=15gb ts total_vcpus=16 ts pci_stats=,['21'],1633,nova-compute
+ts pid info nova.compute.resource_tracker req_id-id -ts,['20'],3266,nova-compute
+ts pid info nova.scheduler.host_manager ts -successfully synced instances from host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us.,['24'],472,nova-scheduler
+ts pid info nova.scheduler.host_manager ts -the instance sync for host cp-1.slowvm1.tcloud-pg0.utah.cloudlab.us did not match. re-created its instancelist.,['28'],341,nova-scheduler
+ts pid info nova.virt.libvirt.driver - instance: ts instance ts successfully.,['10'],3820,nova-compute
+ts pid info nova.virt.libvirt.driver ts id -instance: ts,['184'],3736,nova-compute
+ts pid info nova.virt.libvirt.imagecache req_id-id -base or swap file too young to remove: /var/lib/nova/instances/_base/id,['33'],938,nova-compute
+ts pid info nova.virt.libvirt.imagecache req_id-id -image id at /var/lib/nova/instances/_base/id: in use: on this node 1 local 0 on other nodes sharing this instance storage,['8'],11441,nova-compute
+ts pid info ts -ts,"['17', '186', '191']",3994,nova-compute
+ts pid info ts id -instance: ts,['183'],5606,nova-compute
+ts pid info ts req_id-id -ts,['7'],13074,nova-compute
+ts pid ts nova.virt.libvirt.imagecache req_id-id -ts base ts /var/lib/nova/instances/_base/id,['16'],17127,nova-compute
+ts pid warning nova.compute.manager req_id-id -while synchronizing instance power states found 1 instances in the database and 0 instances on the hypervisor.,['4'],41,nova-compute
+ts pid warning nova.virt.libvirt.driver req_id-id -couldnt obtain the vcpu count from domain id: ts exception: req_id: cpu affinity is not supported,['41'],11,nova-compute
+ts warning keystonemiddleware.auth_token ts id -identity response: doctypehtmlpublic_ietfdtdhtml20en,['189'],1,nova-api

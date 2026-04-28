@@ -1,0 +1,20 @@
+[
+    ["nova-api", "nova-scheduler"],
+    ["nova-scheduler", "nova-compute"],
+    ["nova-compute", "nova-conductor"],
+    ["nova-api", "nova-conductor"],
+    ["nova-compute", "neutron-server"],
+    ["nova-compute", "cinder-api"],
+    ["nova-compute", "glance-api"],
+    ["cinder-api", "cinder-scheduler"],
+    ["cinder-scheduler", "cinder-volume"],
+    ["neutron-server", "neutron-l3-agent"],
+    ["neutron-server", "neutron-dhcp-agent"],
+    ["neutron-server", "neutron-openvswitch-agent"],
+    ["glance-api", "glance-registry"],
+    ["nova-api", "keystone"],
+    ["cinder-api", "keystone"],
+    ["neutron-server", "keystone"],
+    ["glance-api", "keystone"],
+    ["glance-api", "swift-proxy"]
+]

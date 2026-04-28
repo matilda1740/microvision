@@ -1,6 +1,6 @@
 import json
 
-from src.visualization.graph import edges_to_networkx, networkx_to_dict
+from src.visualization import edges_to_networkx, networkx_to_dict
 
 
 def test_edges_schema_mapping():

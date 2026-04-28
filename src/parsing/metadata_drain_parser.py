@@ -17,7 +17,8 @@ import pandas as pd
 from typing import List
 
 # bring extractor and defaults from a small helper module so this file stays focused
-from src.parsing.metadata_utils import FIELD_CONFIG, extract_and_build_metadata
+from src.parsing.metadata_utils import FIELD_CONFIG, extract_and_build_metadata, is_numeric_like
+from src.parsing.regex_utils import normalize_service_from_component
 
 
 
@@ -172,8 +173,14 @@ class MetadataDrainParser:
                 return "<File> " + base_format
         return base_format
 
-    def process_line(self, raw_line: str, line_no: int) -> None:
-        """Parse one log line, enrich and buffer for flush."""
+    def process_line(self, raw_line: str, line_no: int, extra_meta: Optional[Dict[str, Any]] = None) -> None:
+        """Parse one log line, enrich and buffer for flush.
+        
+        Args:
+            raw_line: The raw log string.
+            line_no: The line number.
+            extra_meta: Optional dictionary of metadata to inject (e.g. {'service': 'nova-api'}).
+        """
         raw = raw_line.rstrip("\n")
 
         if line_no == 1 and self.log_format:
@@ -196,6 +203,12 @@ class MetadataDrainParser:
         # canonicalize keys to lowercase so we don't produce duplicated
         # capitalized vs lowercase columns later in the CSV
         parsed_meta = { (k.lower() if isinstance(k, str) else k): v for k, v in parsed_meta.items() }
+
+        # Inject extra metadata if provided (e.g. service name from filename)
+        if extra_meta:
+            for k, v in extra_meta.items():
+                if v is not None:
+                    parsed_meta[k.lower()] = v
 
         # Build/augment metadata from content and parsed_meta using field_config
         try:
@@ -228,22 +241,11 @@ class MetadataDrainParser:
         # the `service` field due to upstream parsing misalignment). We
         # prioritize extractor-provided values and fall back to deriving from
         # component. Also coerce common numeric fields to proper numeric types.
-        def _is_numeric_like(x):
-            try:
-                if x is None:
-                    return False
-                # handle lists/arrays conservatively
-                if isinstance(x, (list, tuple)):
-                    return False
-                float(str(x))
-                return True
-            except Exception:
-                return False
 
         # If `service` looks numeric, move it into `responsetime` (or
         # `responselength`) if those fields are missing or non-numeric.
         svc = parsed_meta.get("service")
-        if svc is not None and _is_numeric_like(svc):
+        if svc is not None and is_numeric_like(svc):
             # prefer responsetime, then responselength
             if not parsed_meta.get("responsetime"):
                 parsed_meta["responsetime"] = svc
@@ -255,18 +257,17 @@ class MetadataDrainParser:
         # Ensure service exists and is a textual short-name derived from component
         if not parsed_meta.get("service"):
             comp = parsed_meta.get("component")
-            if isinstance(comp, str) and comp:
-                parts = comp.split(".") if isinstance(comp, str) else []
-                service_name = ".".join(parts[:2]) if parts else comp
-                parsed_meta["service"] = str(service_name).replace("_", "-")
+            service_name = normalize_service_from_component(comp)
+            if service_name:
+                parsed_meta["service"] = service_name
 
         # Coerce response-time/length to numeric types when possible
-        if "responsetime" in parsed_meta and _is_numeric_like(parsed_meta["responsetime"]):
+        if "responsetime" in parsed_meta and is_numeric_like(parsed_meta["responsetime"]):
             try:
                 parsed_meta["responsetime"] = float(parsed_meta["responsetime"])
             except Exception:
                 pass
-        if "responselength" in parsed_meta and _is_numeric_like(parsed_meta["responselength"]):
+        if "responselength" in parsed_meta and is_numeric_like(parsed_meta["responselength"]):
             try:
                 parsed_meta["responselength"] = int(float(parsed_meta["responselength"]))
             except Exception:

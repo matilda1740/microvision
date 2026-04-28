@@ -4,6 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "microvision"
-version = "0.0.0"
-description = "Microvision parsing/ingest/visualization pipeline"
-requires-python = ">=3.8"
+version = "1.0.0"
+authors = [
+    { name = "Matilda Mwendwa" }
+]
+description = "Microvision: Microservice Dependency Discovery using Semantic Log Analysis and Retrieval-Augmented Validation"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "streamlit",
+    "pandas",
+    "networkx",
+    "pyvis",
+    "chromadb",
+    "sentence-transformers",
+    "drain3",
+    "beautifulsoup4",
+    "scikit-learn",
+    "matplotlib"
+]
+
+[project.urls]
+Homepage = "https://github.com/matildamwendwa/microvision"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

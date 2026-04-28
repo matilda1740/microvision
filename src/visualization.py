@@ -1,0 +1,564 @@
+"""Small visualization helpers for service dependency graphs.
+
+This module provides utility functions that convert edge streams (dicts)
+into networkx graphs and serializable JSON structures. Heavy UI libs like
+pyvis are imported lazily so unit tests don't require them.
+"""
+from __future__ import annotations
+
+from typing import Iterable, Dict, Any
+import json
+import re
+from pathlib import Path
+
+try:
+    import networkx as nx
+except Exception:  # pragma: no cover - networkx required only for graph operations
+    nx = None  # type: ignore
+
+try:
+    # optional service label helpers
+    from src.enrichment.labels import extract_service_label_from_metadata, _pretty_display_from_token
+except Exception:
+    extract_service_label_from_metadata = None  # type: ignore
+    _pretty_display_from_token = None  # type: ignore
+
+
+def edges_to_networkx(edges: Iterable[Dict[str, Any]]):
+    """Convert an iterable of edge dicts into a NetworkX DiGraph.
+
+    Each edge dict should contain at least 'source' and 'target'. Other keys
+    (e.g., 'weight', 'score', 'metadata') will be added as edge attributes.
+
+    Returns a NetworkX DiGraph. If networkx is not installed, raises RuntimeError.
+    """
+    if nx is None:
+        raise RuntimeError("networkx is required for graph construction")
+
+    G = nx.DiGraph()
+    # We enumerate edges so we can generate stable fallback ids when none
+    # of the expected fields are present. This makes the visualizer robust
+    # against upstream schema variants (source_id, source_index, etc.).
+    for idx, e in enumerate(edges):
+        # helper to pick first available id among candidates and coerce to
+        # a trimmed string. Treat None as missing; accept numeric 0 as valid.
+        def _pick_id(keys):
+            for k in keys:
+                v = e.get(k)
+                if v is None:
+                    continue
+                try:
+                    s = str(v).strip()
+                except Exception:
+                    continue
+                if s == "":
+                    continue
+                return s
+            return None
+
+        src = _pick_id(("source", "source_id", "source_index"))
+        dst = _pick_id(("target", "target_id", "target_index"))
+
+        # If either side is still missing, generate a stable fallback id so
+        # the graph remains connected and renderable.
+        if src is None:
+            src = f"node:{idx}:s"
+        if dst is None:
+            dst = f"node:{idx}:t"
+        # keep other attributes (including source_id/source_index if present)
+        attrs = {k: v for k, v in e.items() if k not in ("source", "target")}
+        # coerce numpy scalars/lists to python primitives for attributes
+        for k, v in list(attrs.items()):
+            try:
+                if hasattr(v, "tolist"):
+                    attrs[k] = v.tolist()
+            except Exception:
+                pass
+        # add nodes and optionally set labels using metadata heuristics
+        if not G.has_node(src):
+            label = None
+            # Prefer top-level service columns if present
+            if "service" in attrs:
+                label = attrs.get("service")
+            elif "source_service" in attrs:
+                label = attrs.get("source_service")
+            elif "service_display" in attrs:
+                label = attrs.get("service_display")
+            elif "service_token" in attrs and _pretty_display_from_token is not None:
+                label = _pretty_display_from_token(attrs.get("service_token"))
+            # try extracting from source-related metadata if available
+            if label is None and extract_service_label_from_metadata is not None:
+                label = extract_service_label_from_metadata(attrs.get("source_metadata") or attrs.get("metadata") or attrs.get("service"))
+            # Normalize label to trimmed string
+            try:
+                label = str(label).strip() if label is not None else None
+            except Exception:
+                pass
+            G.add_node(src, label=label if label is not None else src, service=label)
+        if not G.has_node(dst):
+            label = None
+            if "service" in attrs:
+                label = attrs.get("service")
+            elif "target_service" in attrs:
+                label = attrs.get("target_service")
+            elif "service_display" in attrs:
+                label = attrs.get("service_display")
+            elif "service_token" in attrs and _pretty_display_from_token is not None:
+                label = _pretty_display_from_token(attrs.get("service_token"))
+            if label is None and extract_service_label_from_metadata is not None:
+                label = extract_service_label_from_metadata(attrs.get("target_metadata") or attrs.get("metadata") or attrs.get("service"))
+            try:
+                label = str(label).strip() if label is not None else None
+            except Exception:
+                pass
+            G.add_node(dst, label=label if label is not None else dst, service=label)
+
+        G.add_edge(src, dst, **attrs)
+    return G
+
+
+def networkx_to_dict(G):
+    """Serialize a NetworkX graph to a JSON-serializable dict with nodes and edges.
+
+    Format:
+      {"nodes": [{"id": id, "label": label, ...}], "edges": [{"source": s, "target": t, ...}]}
+
+    If networkx is not available, raises RuntimeError.
+    """
+    if nx is None:
+        raise RuntimeError("networkx is required for graph serialization")
+    nodes = []
+    for n, data in G.nodes(data=True):
+        node = {"id": n}
+        node.update({k: v for k, v in data.items()})
+        nodes.append(node)
+
+    edges = []
+    for s, t, data in G.edges(data=True):
+        edge = {"source": s, "target": t}
+        edge.update({k: v for k, v in data.items()})
+        edges.append(edge)
+
+    return {"nodes": nodes, "edges": edges}
+
+
+def write_pyvis_html(G, output_path: str, notebook: bool = False):
+    """Render graph to an interactive HTML using pyvis (lazy import).
+
+    This is a convenience wrapper; if `pyvis` is missing a RuntimeError is raised.
+    """
+    try:
+        from pyvis.network import Network
+    except Exception as e:
+        raise RuntimeError("pyvis is required to write HTML visualizations") from e
+
+    net = Network(notebook=notebook, directed=True, height="500px", width="100%", bgcolor="#ffffff", font_color="#333333")
+    
+    # Enable physics for better layout
+    net.force_atlas_2based()
+    
+    for n, data in G.nodes(data=True):
+        # Extract label with strict fallback chain
+        label = str(data.get("label", n))
+        if label.startswith("node:") and "service" in data and data["service"]:
+            label = str(data["service"])
+        
+        # FIXED: Professional Color Palette for the Presentation
+        color = {
+            "background": "#D2E5FF", # Light professional blue
+            "border": "#2B7CE9",     # Strong blue border
+            "highlight": {"background": "#FACC15", "border": "#EAB308"} # Gold highlight on click
+        }
+        
+        # Color nodes by service family for easier visual grouping
+        label_lower = label.lower()
+        if "nova" in label_lower:
+            color["background"] = "#E0F2FE" # Nova Sky Blue
+            color["border"] = "#0369A1"
+        elif "neutron" in label_lower:
+            color["background"] = "#DCFCE7" # Neutron Emerald
+            color["border"] = "#15803D"
+        elif "cinder" in label_lower:
+            color["background"] = "#F3E8FF" # Cinder Purple
+            color["border"] = "#7E22CE"
+        elif "keystone" in label_lower:
+            color["background"] = "#FEF3C7" # Keystone Amber
+            color["border"] = "#B45309"
+        
+        # Build tooltip title explicitly
+        title = f"Service: {label}"
+        
+        # FIXED: Use "dot" with internal label for a cleaner, modern look
+        # This replaces the "box" shape which was causing the white textbox issue
+        net.add_node(n, 
+                     label=label, 
+                     title=title, 
+                     color=color, 
+                     shape="dot",
+                     size=25,
+                     font={"size": 14, "color": "#1F2937", "face": "tahoma", "background": "rgba(255,255,255,0.7)"})
+        
+    for s, t, data in G.edges(data=True):
+
+        # Prepare Edge Attributes
+        attrs = {k: v for k, v in data.items() if k not in ("metadata", "llm_verification")}
+        
+        # Default styling
+        color = {"color": "#848484", "highlight": "#2B7CE9"} 
+        width = 1.0
+        edge_label = ""
+        
+        llm_data = data.get("llm_verification")
+        if isinstance(llm_data, str):
+            try: llm_data = json.loads(llm_data)
+            except: llm_data = None
+
+        # Determine edge label and styling based on scores
+        score = data.get("hybrid_score", 0.0)
+        edge_label = f"{score:.2f}" # Always show the score on the edge
+        
+        title_lines = [f"Source: {s}", f"Target: {t}", f"Hybrid Score: {score:.4f}"]
+        
+        # GLOBAL OVERRIDE: Prevent inheritance from nodes which was causing the grey/blue shift
+        color = {"color": "#848484", "highlight": "#2B7CE9", "inherit": False} 
+        width = 1.0
+        
+        llm_data = data.get("llm_verification")
+        if isinstance(llm_data, str):
+            try: llm_data = json.loads(llm_data)
+            except: llm_data = None
+
+        if llm_data and isinstance(llm_data, dict):
+            is_causal = llm_data.get("is_causal", False)
+            confidence = llm_data.get("confidence", 0.0)
+            reason = llm_data.get("reasoning", "No logic provided")
+            
+            title_lines.append(f"LLM Conf: {confidence:.2f}")
+            reason_trunc = (reason[:150] + "...") if len(reason) > 150 else reason
+            title_lines.append(f"LLM Reason: {reason_trunc}")
+            
+            if is_causal and confidence >= 0.7:
+                # FORCE VERTICAL COLORS
+                color = {"color": "#22C55E", "highlight": "#16A34A", "opacity": 1.0, "inherit": False} # Emerald Green (Verified)
+                width = 5.0 # Thicker for better visibility
+                edge_label += " (✓)"
+            elif not is_causal:
+                 color = {"color": "#EF4444", "highlight": "#DC2626", "opacity": 0.8, "inherit": False} # Red (Rejected)
+                 width = 1.0
+                 attrs["dashes"] = True
+                 edge_label += " (X)"
+        
+        net.add_edge(s, t, label=edge_label, title="\n".join(title_lines), color=color, width=width, font={"size": 12, "align": "top", "color": "#1F2937", "strokeWidth": 2, "strokeColor": "#FFFFFF"})
+
+    # Save logic
+    if notebook:
+
+        return net
+    
+    output_dir = Path(output_path).parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+    net.save_graph(str(output_path))
+    print(f"Graph saved to {output_path}")
+
+    # Configure physics to stabilize quickly and stop moving (jittering)
+    # minVelocity: 0.75 helps the simulation stop once nodes slow down.
+    # stabilization: pre-compute layout so it doesn't move on load.
+    # Improved physics for better readability and spacing:
+    # - Increased springLength (95 -> 200) to spread nodes out
+    # - Increased repulsion (-2000 -> -4000)
+    # - Added avoidOverlap to nodes
+    net.set_options("""
+    {
+      "nodes": {
+        "font": {
+            "size": 16,
+            "face": "tahoma",
+            "background": "white"
+        },
+        "shape": "dot",
+        "size": 20,
+        "shadow": true
+      },
+      "edges": {
+        "color": {
+            "inherit": true,
+            "opacity": 0.7
+        },
+        "smooth": {
+            "type": "continuous",
+            "forceDirection": "none"
+        },
+        "arrows": {
+            "to": {
+                "enabled": true,
+                "scaleFactor": 0.5
+            }
+        }
+      },
+      "physics": {
+        "enabled": true,
+        "stabilization": {
+          "enabled": true,
+          "iterations": 1000,
+          "updateInterval": 25,
+          "onlyDynamicEdges": false,
+          "fit": true
+        },
+        "minVelocity": 0.75,
+        "maxVelocity": 30,
+        "solver": "barnesHut",
+        "barnesHut": {
+            "gravitationalConstant": -4000,
+            "centralGravity": 0.3,
+            "springLength": 200,
+            "springConstant": 0.04,
+            "damping": 0.09,
+            "avoidOverlap": 0.2
+        },
+        "adaptiveTimestep": true
+      },
+      "interaction": {
+        "navigationButtons": true,
+        "keyboard": true,
+        "tooltipDelay": 200
+      }
+    }
+    """)
+
+    # Try the pyvis writer first; if it fails (or generates problematic
+    # relative script refs), fall back to a minimal vis-network HTML.
+    try:
+        net.write_html(output_path)
+
+        # Post-process to inline any relative utils.js reference written by
+        # pyvis so embedding in Streamlit's iframe doesn't accidentally load
+        # another file from the server that conflicts with Streamlit globals.
+        try:
+            outp = Path(output_path)
+            html_text = outp.read_text(encoding="utf-8")
+            marker = '<script src="lib/bindings/utils.js"></script>'
+            inlined = False
+            if marker in html_text:
+                repo_root = Path(__file__).resolve().parents[1]
+                local_utils = repo_root / "lib" / "bindings" / "utils.js"
+                if local_utils.exists():
+                    utils_js = local_utils.read_text(encoding="utf-8")
+                    # Wrap utils.js in a small namespaced module to avoid
+                    # referencing global Streamlit symbols and to prevent
+                    # leaking variables into the page global scope.
+                    wrapper = (
+                        '<script>'
+                        '(function(ns){\n'
+                        '  try {\n'
+                        '    var Streamlit = window.Streamlit || {};\n'
+                        '    var module = {exports: {}};\n'
+                        '    (function(module, exports){\n'
+                        f"{utils_js}\n"
+                        '    })(module, module.exports);\n'
+                        '    window[ns] = module.exports;\n'
+                        '  } catch(e) { console.error("microvision utils inline error", e); }\n'
+                        '})("_microvision_utils");'
+                        '</script>'
+                    )
+                    html_text = html_text.replace(marker, wrapper)
+                    inlined = True
+
+            # Always add a small HTML comment indicating which renderer path was used
+            # and whether utils.js was inlined. This helps tests and debugging.
+            comment = f"<!-- graph-renderer: pyvis; utils-inlined: {'yes' if inlined else 'no'} -->"
+            if comment not in html_text:
+                # insert comment after the opening <head> tag if present
+                if '<head>' in html_text:
+                    html_text = html_text.replace('<head>', '<head>\n' + comment, 1)
+                else:
+                    html_text = comment + '\n' + html_text
+
+            # Ensure the pyvis HTML contains the graph data. Some pyvis versions
+            # render empty DataSet initializers and populate them elsewhere; when
+            # embedding in an iframe those population steps may not run as
+            # expected. Strategy:
+            #  - perform regex replacements that match var/let/const/no-decl
+            #  - append a runtime injector that populates empty DataSets on DOM ready
+            try:
+                data = networkx_to_dict(G)
+                nodes_json = json.dumps(data["nodes"])  # type: ignore[arg-type]
+                edges_json = json.dumps(data["edges"])  # type: ignore[arg-type]
+
+                did_replace = False
+                # regex patterns to match different declaration styles
+                node_patterns = [
+                    r"\\b(?:var|let|const)\\s+nodes\\s*=\\s*new\\s+vis\\.DataSet\\s*\\(\\s*\\[\\s*\\]\\s*\\)\\s*;",
+                    r"\\bnodes\\s*=\\s*new\\s+vis\\.DataSet\\s*\\(\\s*\\[\\s*\\]\\s*\\)\\s*;",
+                ]
+                edge_patterns = [
+                    r"\\b(?:var|let|const)\\s+edges\\s*=\\s*new\\s+vis\\.DataSet\\s*\\(\\s*\\[\\s*\\]\\s*\\)\\s*;",
+                    r"\\bedges\\s*=\\s*new\\s+vis\\.DataSet\\s*\\(\\s*\\[\\s*\\]\\s*\\)\\s*;",
+                ]
+
+                for pat in node_patterns:
+                    new_html = re.sub(pat, f"nodes = new vis.DataSet({nodes_json});", html_text, flags=re.MULTILINE)
+                    if new_html != html_text:
+                        did_replace = True
+                        html_text = new_html
+
+                for pat in edge_patterns:
+                    new_html = re.sub(pat, f"edges = new vis.DataSet({edges_json});", html_text, flags=re.MULTILINE)
+                    if new_html != html_text:
+                        did_replace = True
+                        html_text = new_html
+
+                # Append runtime injector if not present
+                inject_marker = '<!-- microvision-inject-graph-data -->'
+                did_inject = False
+                if inject_marker not in html_text:
+                    populate_script = (
+                        f"\n{inject_marker}\n<script>\n"
+                        "(function(){\n"
+                        f"  try {{ window._microvision_graph_data = {{nodes: {nodes_json}, edges: {edges_json}}}; }} catch(e) {{ console.error('microvision: failed to set graph data', e); }}\n"
+                        "  try {\n"
+                        "    function populateIfEmpty(){\n"
+                        "      try {\n"
+                        "        if(typeof nodes !== 'undefined' && nodes && typeof nodes.getIds === 'function' && nodes.getIds().length === 0){\n"
+                        "          nodes.add(window._microvision_graph_data.nodes);\n"
+                        "        }\n"
+                        "        if(typeof edges !== 'undefined' && edges && typeof edges.getIds === 'function' && edges.getIds().length === 0){\n"
+                        "          edges.add(window._microvision_graph_data.edges);\n"
+                        "        }\n"
+                        "        // attempt to refresh/redraw the network in case the library did not pick up dataset changes automatically\n"
+                        "        try {\n"
+                        "          if(typeof network !== 'undefined' && network){\n"
+                        "            try {\n"
+                        "              if(typeof network.setData === 'function'){\n"
+                        "                network.setData({nodes: nodes, edges: edges});\n"
+                        "              }\n"
+                        "            } catch(e) { console.warn('microvision: network.setData failed', e); }\n"
+                        "            try {\n"
+                        "              if(typeof network.redraw === 'function'){ network.redraw(); }\n"
+                        "            } catch(e) { console.warn('microvision: network.redraw failed', e); }\n"
+                        "          }\n"
+                        "        } catch(e) { console.warn('microvision: refresh network failed', e); }\n"
+                        "      } catch(e) { console.error('microvision: populateIfEmpty failed', e); }\n"
+                        "    }\n"
+                        "    if(document.readyState === 'complete' || document.readyState === 'interactive'){\n"
+                        "      setTimeout(populateIfEmpty, 50);\n"
+                        "    } else {\n"
+                        "      document.addEventListener('DOMContentLoaded', function(){ setTimeout(populateIfEmpty, 50); });\n"
+                        "    }\n"
+                        "  } catch(e) { console.error('microvision: runtime populate error', e); }\n"
+                        "})();\n</script>\n"
+                    )
+                    if '</body>' in html_text:
+                        html_text = html_text.replace('</body>', populate_script + '</body>', 1)
+                    else:
+                        html_text = html_text + populate_script
+                    did_inject = True
+
+                injected = did_replace or did_inject
+
+                # Add a visible banner in the body to help debugging without devtools
+                banner = (
+                    f"<div style=\"width:100%;padding:6px 12px;background:#f7f7f7;border-bottom:1px solid #ddd;font-size:12px;color:#333;\">"
+                    f"renderer: pyvis (utils-inlined: {'yes' if inlined else 'no'}) | nodes-injected: {'yes' if injected else 'no'}"
+                    "</div>"
+                )
+                if '<body>' in html_text:
+                    html_text = html_text.replace('<body>', '<body>\n' + banner, 1)
+                else:
+                    html_text = banner + html_text
+            except Exception:
+                # non-fatal; leave HTML as-is
+                pass
+
+            outp.write_text(html_text, encoding="utf-8")
+        except Exception:
+            # Non-fatal; return what we have
+            pass
+
+        return output_path
+    except Exception:
+        # Fallback: create a minimal vis-network HTML without pyvis.
+        try:
+            data = networkx_to_dict(G)
+            nodes_json = json.dumps(data["nodes"])  # type: ignore[arg-type]
+            edges_json = json.dumps(data["edges"])  # type: ignore[arg-type]
+        except Exception as e:
+            raise RuntimeError("Failed to serialize graph for fallback visualization") from e
+
+        repo_root = Path(__file__).resolve().parents[1]
+        vis_local = repo_root / "lib" / "vis-9.1.2" / "vis-network.min.js"
+        if vis_local.exists():
+            vis_js = vis_local.read_text(encoding="utf-8")
+            vis_script_tag = f"<script>{vis_js}</script>"
+        else:
+            vis_script_tag = '<script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>'
+
+        # Try to inline the same utils.js into the fallback HTML as a namespaced
+        # module so it never depends on global Streamlit symbols.
+        inlined_utils = False
+        try:
+            local_utils = repo_root / "lib" / "bindings" / "utils.js"
+            if local_utils.exists():
+                utils_js = local_utils.read_text(encoding="utf-8")
+                utils_wrapper = (
+                    '<script>'
+                    '(function(ns){\n'
+                    '  try {\n'
+                    '    var Streamlit = window.Streamlit || {};\n'
+                    '    var module = {exports: {}};\n'
+                    '    (function(module, exports){\n'
+                    f"{utils_js}\n"
+                    '    })(module, module.exports);\n'
+                    '    window[ns] = module.exports;\n'
+                    '  } catch(e) { console.error("microvision utils inline error", e); }\n'
+                    '})("_microvision_utils");'
+                    '</script>'
+                )
+                inlined_utils = True
+            else:
+                utils_wrapper = ''
+        except Exception:
+            utils_wrapper = ''
+
+            html = f"""
+                    <!doctype html>
+                        <html>
+                        <head>
+                            <meta charset="utf-8">
+                            <style>
+                                #mynetwork {{ width: 100%; height: 800px; border: 1px solid lightgray; }}
+                            </style>
+                            {vis_script_tag}
+                            {utils_wrapper}
+                            <!-- graph-renderer: fallback; utils-inlined: {'yes' if inlined_utils else 'no'} -->
+                        </head>
+                        <body>
+                        <div style="width:100%;padding:6px 12px;background:#f7f7f7;border-bottom:1px solid #ddd;font-size:12px;color:#333;">renderer: fallback (utils-inlined: {'yes' if inlined_utils else 'no'}) | nodes-injected: yes</div>
+                        <div id="mynetwork"></div>
+                        <script>
+                            const nodes = new vis.DataSet({nodes_json});
+                            const edges = new vis.DataSet({edges_json});
+                            const container = document.getElementById('mynetwork');
+                            const data = {{ nodes: nodes, edges: edges }};
+                            const options = {{ 
+                                physics: {{ 
+                                    stabilization: {{ enabled: true, iterations: 2000 }}, 
+                                    minVelocity: 0.75,
+                                    maxVelocity: 30,
+                                    solver: "barnesHut",
+                                    barnesHut: {{
+                                        damping: 0.5,
+                                        gravitationalConstant: -2000,
+                                        springConstant: 0.04
+                                    }},
+                                    adaptiveTimestep: true
+                                }}, 
+                                edges: {{ smooth: true }} 
+                            }};
+                            const network = new vis.Network(container, data, options);
+                        </script>
+                        </body>
+                        </html>
+                    """
+
+    Path(output_path).write_text(html, encoding="utf-8")
+    return output_path

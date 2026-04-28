@@ -1,0 +1,122 @@
+{
+  "run_id": "run_20260406T120835Z",
+  "started_at": "2026-04-06T12:08:35.689472Z",
+  "source": "data/openstack/OpenStack_full.log",
+  "sample": 500000,
+  "top_k_requested": 5,
+  "threshold": 0.4,
+  "alpha": 0.5,
+  "dataset_name": "openstack",
+  "events": [
+    {
+      "ts": 1775477393.045142,
+      "event": "parsed_sample_written",
+      "path": "data/openstack/parsed_sample.csv",
+      "rows": 207632
+    },
+    {
+      "ts": 1775477402.599488,
+      "event": "cleaned_templates_written",
+      "path": "data/openstack/cleaned_templates.csv",
+      "rows": 107
+    },
+    {
+      "ts": 1775477569.1222668,
+      "event": "merged_timestamp_canonical_count",
+      "count_non_empty": 192,
+      "rows": 192
+    },
+    {
+      "ts": 1775477569.122272,
+      "event": "merged_templates_written",
+      "path": "data/openstack/merged_templates.csv",
+      "rows": 192
+    },
+    {
+      "ts": 1775477569.204842,
+      "event": "metadatas_built",
+      "rows": 192
+    },
+    {
+      "ts": 1775477594.86531,
+      "event": "chroma_ingest_started",
+      "tmp_dir": "data/openstack/chroma_db"
+    },
+    {
+      "ts": 1775477595.0539699,
+      "event": "chroma_ingest_completed",
+      "persist_dir": "data/openstack/chroma_db",
+      "count": 192
+    },
+    {
+      "ts": 1775477595.053996,
+      "event": "edge_count_guard_no_adjust",
+      "requested_top_k": 5,
+      "N": 192,
+      "est": 960
+    },
+    {
+      "ts": 1775477600.240427,
+      "event": "validation_completed",
+      "count": 25
+    },
+    {
+      "ts": 1775478091.0569081,
+      "event": "llm_validation_completed",
+      "count": 25
+    },
+    {
+      "ts": 1775478091.482659,
+      "event": "edges_written",
+      "count": 25,
+      "db": "data/openstack/edges/edges.db"
+    },
+    {
+      "ts": 1775478091.526565,
+      "event": "transitions_written",
+      "count": 25
+    }
+  ],
+  "metrics": {
+    "stages": {
+      "sampling": {
+        "duration_s": 0.12804627418518066,
+        "rows": 207632
+      },
+      "parsing": {
+        "duration_s": 77.1646671295166,
+        "rows": 207632
+      },
+      "cleaning": {
+        "duration_s": 9.554343223571777,
+        "rows": 107
+      },
+      "merge": {
+        "duration_s": 166.52277088165283,
+        "rows": 192
+      },
+      "metadatas": {
+        "duration_s": 0.08220124244689941,
+        "rows": 192
+      },
+      "embeddings": {
+        "duration_s": 25.65915322303772,
+        "docs": 192
+      },
+      "chroma_ingest": {
+        "duration_s": 0.1886918544769287,
+        "count": 192
+      },
+      "edges_written": {
+        "duration_s": 0.02534198760986328,
+        "count": 25
+      },
+      "transitions": {
+        "duration_s": 0.00608372688293457,
+        "count": 25
+      }
+    }
+  },
+  "finished_at": "2026-04-06T12:21:31.533041Z",
+  "edges_db": "data/openstack/edges/edges.db"
+}

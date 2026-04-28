@@ -42,5 +42,42 @@ def test_merge_majority_fill(tmp_path):
     )
     out_path = tmp_path / "out2.csv"
     df = merge_structured_metadata(cleaned, structured, str(out_path))
-    assert df.shape[0] == 1
-    assert "svc.a" in df["service"].iloc[0]
+    
+    # Expect 2 rows (one per template_id), not 1
+    assert df.shape[0] == 2
+    
+    # Both should have the service filled (one from structured, one from majority fill)
+    assert all(df["service"] == "svc.a")
+
+
+def test_merge_produces_scalars(tmp_path):
+    """Ensure that metadata columns like service, component, level are aggregated as scalars (mode), not lists."""
+    cleaned = pd.DataFrame({
+        "semantic_text": ["msg1", "msg1", "msg1"],
+        "template_ids": [["1"], ["2"], ["3"]],
+        "occurrences": [1, 1, 1],
+    })
+    # structured data has multiple entries for the same semantic group
+    structured = pd.DataFrame({
+        "template_id": ["1", "2", "3"],
+        "service": ["nova-api", "nova-api", "nova-compute"], 
+        "component": ["comp1", "comp1", "comp2"],
+        "level": ["INFO", "INFO", "WARN"],
+    })
+    
+    out_path = tmp_path / "out_scalars.csv"
+    df = merge_structured_metadata(cleaned, structured, str(out_path))
+    
+    # Expect 3 rows (one per template_id)
+    assert len(df) == 3
+    
+    # Check that all service values are strings (scalars), not lists
+    for val in df["service"]:
+        assert isinstance(val, str)
+    
+    # Check specific values
+    # id 1 -> nova-api
+    assert df.loc[df["template_id"] == "1", "service"].iloc[0] == "nova-api"
+    # id 3 -> nova-compute
+    assert df.loc[df["template_id"] == "3", "service"].iloc[0] == "nova-compute"
+

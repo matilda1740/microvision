@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 from scripts.visualize_graph import load_edges_from_db
-from src.storage.edge_store import EdgeStore
+from src.storage import EdgeStore
 
 
 def test_load_edges_from_db(tmp_path):
@@ -30,7 +30,8 @@ def test_load_edges_from_db(tmp_path):
     written = store.write_edges(gen(), batch_size=2)
     assert written == 3
 
-    edges = load_edges_from_db(str(db_path), limit=10)
+    # Use level="template" to avoid filtering by service (which is missing in this test data)
+    edges = load_edges_from_db(str(db_path), limit=10, level="template")
     assert len(edges) == 3
     # ensure metadata parsed
     assert edges[0]["target_metadata"] is None or isinstance(edges[0]["target_metadata"], dict)
