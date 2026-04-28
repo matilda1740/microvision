@@ -2,6 +2,8 @@
 
 **"Automated architectural recovery from high-volume system logs using semantic vector retrieval."**
 
+> **So What?** MicroVision helps engineers uncover hidden service dependencies directly from logs, significantly improving debugging, observability, and overall system reliability.
+
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://microvisionlogs.streamlit.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -86,5 +88,18 @@ During this project, I tackled:
 *   **High-Volume Data Pipelines**: Optimizing the flow of 180k+ logs through a multi-stage refinement process.
 *   **Semantic Search**: Balancing the Precision vs. Recall trade-off in vector retrieval.
 *   **Explainable AI (XAI)**: Designing a Forensics UI that surfaces the logical reasoning behind AI-inferred dependencies.
+
+---
+
+## 🚀 Future Roadmap
+*   **Real-time Stream Processing**: Integration with Kafka/ELK for live dependency tracking.
+*   **Anomaly Detection**: Leveraging the semantic baseline to identify service deviations in real-time.
+*   **Multi-Modal Data Fusion**: Combining log semantics with metric-based causal discovery.
+
+---
+
+### **Summary**
+**MicroVision** reads raw system logs, understands the underlying semantic relationships between services, and visualizes exactly how they interact—turning "noise" into actionable architectural intelligence.
+
 
 
