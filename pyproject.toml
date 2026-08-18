@@ -23,6 +23,7 @@ dependencies = [
     "networkx",
     "pyvis",
     "chromadb",
+    "portalocker>=3.2.0,<4.0.0",
     "sentence-transformers",
     "drain3",
     "beautifulsoup4",
@@ -35,4 +36,3 @@ Homepage = "https://github.com/matildamwendwa/microvision"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

@@ -108,6 +108,21 @@ def compute_candidate_edges_stream(
             id_col = col
             break
 
+    semantic_col_candidates: Sequence[str] = ("semantic_text", "text", "template")
+    semantic_col = None
+    for col in semantic_col_candidates:
+        if col in df.columns:
+            semantic_col = col
+            break
+
+    if semantic_col is not None:
+        semantic_series = df[semantic_col].fillna("").astype(str)
+    else:
+        if pd is not None:
+            semantic_series = pd.Series([""] * n, index=df.index, dtype=str)
+        else:
+            semantic_series = np.array([""] * n, dtype=str)
+
     # Prefer an explicit canonical timestamp column when present
     timestamp_candidates = ("timestamp_canonical", "timestamp", "time", "ts", "created_at")
     ts_col = None
@@ -134,7 +149,7 @@ def compute_candidate_edges_stream(
             from sklearn.metrics.pairwise import cosine_similarity
             
             # Fit on all target documents
-            corpus = df["semantic_text"].fillna("").astype(str).tolist()
+            corpus = semantic_series.tolist()
             vectorizer = TfidfVectorizer(stop_words='english')
             tfidf_matrix = vectorizer.fit_transform(corpus)
             has_sparse = True
@@ -189,7 +204,10 @@ def compute_candidate_edges_stream(
             sparse_sims_batch = None
             if has_sparse:
                 # Transform source batch
-                source_corpus = df.iloc[indices]["semantic_text"].fillna("").astype(str).tolist()
+                if hasattr(semantic_series, "iloc"):
+                    source_corpus = semantic_series.iloc[indices].tolist()
+                else:
+                    source_corpus = semantic_series[indices].tolist()
                 source_tfidf = vectorizer.transform(source_corpus)
                 # Compute similarity against ALL targets (small dataset assumption)
                 sparse_sims_batch = cosine_similarity(source_tfidf, tfidf_matrix)
@@ -227,7 +245,10 @@ def compute_candidate_edges_stream(
                     
                     candidates[tgt_index] = {
                         "dense_score": dense_score,
-                        "sparse_score": 0.0,
+                        # If sparse retrieval does not return this candidate, keep
+                        # the dense score as baseline so hybrid scoring does not
+                        # artificially penalize dense-only matches.
+                        "sparse_score": dense_score,
                         "meta": dense_metas[i] if i < len(dense_metas) else None,
                         "tgt_id": tgt_id
                     }
@@ -263,7 +284,7 @@ def compute_candidate_edges_stream(
                             meta = {
                                 "service": tgt_row.get("service"),
                                 "component": tgt_row.get("component"),
-                                "semantic_text": tgt_row.get("semantic_text"),
+                                "semantic_text": tgt_row.get(semantic_col) if semantic_col is not None else None,
                                 "timestamp": tgt_row.get(ts_col) if ts_col else None
                             }
                             tgt_id = tgt_row[id_col] if id_col else str(tgt_idx)
@@ -365,7 +386,7 @@ def compute_candidate_edges_stream(
                         "hybrid_score": score,
                         "alpha": float(alpha),
                         "target_semantic_text": (meta.get("semantic_text") if isinstance(meta, dict) else None),
-                        "source_semantic_text": (df.iloc[src_idx]["semantic_text"] if "semantic_text" in df.columns else None),
+                        "source_semantic_text": (semantic_series.iloc[src_idx] if semantic_col is not None else None),
                         "source_service": df.iloc[src_idx].get("service"),
                         "source_component": df.iloc[src_idx].get("component"),
                         "target_service": df.iloc[tgt_index].get("service"),
@@ -440,8 +461,8 @@ def compute_candidate_edges_stream(
                     "semantic_cosine": semantic_cosine,
                     "hybrid_score": hybrid,
                     "alpha": float(alpha),
-                    "target_semantic_text": (df.iloc[tgt_idx]["semantic_text"] if "semantic_text" in df.columns else None),
-                    "source_semantic_text": (df.iloc[src_idx]["semantic_text"] if "semantic_text" in df.columns else None),
+                    "target_semantic_text": (semantic_series.iloc[tgt_idx] if semantic_col is not None else None),
+                    "source_semantic_text": (semantic_series.iloc[src_idx] if semantic_col is not None else None),
                     "source_service": df.iloc[src_idx].get("service"),
                     "source_component": df.iloc[src_idx].get("component"),
                     "target_service": df.iloc[tgt_idx].get("service"),
